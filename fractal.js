@@ -1,4 +1,4 @@
-// Alex Grey Inspired Visualization for Tool Art
+// Never Not Playing
 // Vector lines, changing colors, spinning geometries at varying speeds/sizes/shapes
 
 const canvas = document.getElementById('fractalCanvas');
@@ -14,7 +14,7 @@ let lastMoveTime = 0;
 let isTouch = false;
 let fadeOpacity = 0.03;
 
-// Colors inspired by Alex Grey: vibrant, ethereal blues, purples, golds, reds
+// Colors: vibrant, ethereal blues, purples, golds, reds
 const greyColors = ['#00FFFF', '#FF00FF', '#FFFF00', '#FF4500', '#9370DB'];
 
 // Constants
