@@ -99,6 +99,20 @@ function initContactBubble() {
   let hops = 0;
   let armed = false;
 
+  const revealContact = () => {
+    const titleMount = document.getElementById('contactTitleMount');
+    if (titleMount && !titleMount.dataset.ready) {
+      const h2 = document.createElement('h2');
+      h2.className = 'sectionTitle';
+      h2.textContent = 'Contact';
+      titleMount.appendChild(h2);
+      titleMount.dataset.ready = '1';
+    }
+
+    const line = document.querySelector('#contact .contactLine');
+    if (line) line.classList.remove('isHidden');
+  };
+
   const teleport = () => {
     const rect = bubble.getBoundingClientRect();
     const pad = 14;
@@ -125,6 +139,7 @@ function initContactBubble() {
     if (hops >= 2) {
       armed = true;
       bubble.classList.add('isArmed');
+      revealContact();
       bubble.setAttribute('href', '#contact');
       bubble.setAttribute('aria-label', 'Contact');
       bubble.textContent = '@Contact';

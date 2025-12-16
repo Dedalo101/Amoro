@@ -9,14 +9,21 @@
 <body>
     <canvas id="fractalCanvas"></canvas>
 
+    <div class="centerTitle" aria-hidden="true">Ⲁ Ⲙ Ⲟ ꓤ Ⲟ</div>
+
     <main class="ui" aria-label="Amoro">
         <header class="hero">
             <h1 class="glitch" data-text="Ⲁ Ⲙ Ⲟ ꓤ Ⲟ">Ⲁ Ⲙ Ⲟ ꓤ Ⲟ</h1>
             <p class="subhead">Never Not Playing</p>
-            <p class="links">
-                <a href="https://www.mixcloud.com/amooro/" target="_blank" rel="noopener noreferrer">Mixcloud</a>
-            </p>
         </header>
+
+        <div class="scrollSpacer" aria-hidden="true"></div>
+
+        <nav class="links" aria-label="Links">
+            <a href="#sets">Sets</a>
+            <a href="#contact">@Contact</a>
+            <a href="https://www.mixcloud.com/amooro/" target="_blank" rel="noopener noreferrer">Mixcloud</a>
+        </nav>
 
         <section class="section" id="sets" aria-label="Sets">
             <h2 class="sectionTitle">All sets</h2>
@@ -24,14 +31,14 @@
         </section>
 
         <section class="section" id="contact" aria-label="Contact">
-            <h2 class="sectionTitle">Contact</h2>
-            <p class="contactLine">
+            <div id="contactTitleMount"></div>
+            <p class="contactLine isHidden">
                 <a class="contactLink" href="mailto:GlueRecords@revamail.com">GlueRecords@revamail.com</a>
             </p>
         </section>
     </main>
 
-    <a id="contactBubble" class="contactBubble" href="#contact" aria-label="Contact">@Contact</a>
+    <a id="contactBubble" class="contactBubble" href="#" aria-label="Contact">@Contact</a>
     
     <script src="fractal.js"></script>
     <script src="site.js"></script>

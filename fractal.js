@@ -25,14 +25,49 @@ const GLITCH_FREQ = TEMPO * 2;
 const STOP_THRESHOLD = 0.5;
 const COLOR_SWAP_SPEED = 0.03; // Slower swap
 
+// Random center title pulses (slow fade in/out)
+const centerTitlePulse = {
+    active: false,
+    start: 0,
+    duration: 0,
+    next: 2 + Math.random() * 4
+};
+
+function centerTitleAlpha() {
+    if (!centerTitlePulse.active) {
+        if (time >= centerTitlePulse.next) {
+            centerTitlePulse.active = true;
+            centerTitlePulse.start = time;
+            centerTitlePulse.duration = 3.2 + Math.random() * 3.2; // slow in/out
+        }
+        return 0;
+    }
+
+    const t = (time - centerTitlePulse.start) / centerTitlePulse.duration;
+    if (t >= 1) {
+        centerTitlePulse.active = false;
+        centerTitlePulse.next = time + 4.5 + Math.random() * 10; // random downtime
+        return 0;
+    }
+
+    // 0 -> 1 -> 0 smooth fade
+    const wave = Math.sin(Math.PI * t);
+    return Math.pow(Math.max(0, wave), 1.15);
+}
+
 // Resize
 function resizeCanvas() {
     width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
+    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    height = canvas.height = Math.floor(vh);
 }
 
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resizeCanvas);
+    window.visualViewport.addEventListener('scroll', resizeCanvas);
+}
 
 // Mouse/touch
 document.addEventListener('mousemove', (e) => {
@@ -122,6 +157,25 @@ function drawSpinningPolygons() {
         ctx.lineWidth = 2 + (numLayers - layer) * 0.5;
         ctx.stroke();
         
+        ctx.restore();
+    }
+
+    // Random, slow title pulse in the center
+    const a = centerTitleAlpha();
+    if (a > 0) {
+        const glitch = Math.abs(Math.sin(time * GLITCH_FREQ * Math.PI * 2));
+        const alpha = Math.min(1, a * 0.75 + (glitch > 0.97 ? 0.15 : 0));
+        const size = Math.max(14, Math.min(30, Math.min(width, height) * 0.045));
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `600 ${size}px monospace`;
+        ctx.fillStyle = getGreyColor();
+        ctx.globalAlpha = alpha;
+        ctx.fillText('Ⲁ Ⲙ Ⲟ ꓤ Ⲟ', 0, 0);
+        ctx.globalAlpha = 1;
         ctx.restore();
     }
 }
