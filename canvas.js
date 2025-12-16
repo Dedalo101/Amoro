@@ -1,5 +1,22 @@
 // Alex Grey Inspired Visualization - AGGRESSIVE MODE
 // Extreme visuals, rapid changes, intense colors
+
+// === TRACING SYSTEM ===
+const TRACE = {
+    enabled: true,
+    performance: true,
+    events: true,
+    patterns: true,
+    log: (category, message, data = null) => {
+        if (!TRACE.enabled) return;
+        const timestamp = performance.now().toFixed(2);
+        console.log(`[${timestamp}ms] [${category}] ${message}`, data || '');
+    }
+};
+
+console.log('%c=== CANVAS.JS INITIALIZATION ===', 'color: magenta; font-weight: bold');
+TRACE.log('INIT', 'Starting aggressive visualization mode');
+
 const canvas = document.getElementById('fractalCanvas');
 if (!canvas) {
     console.error('Canvas not found!');
@@ -34,6 +51,7 @@ const COLOR_SWAP_SPEED = 0.1; // Rapid color swap
 function resizeCanvas() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
+    TRACE.log('CANVAS', `Resized: ${width}x${height}`);
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
@@ -42,8 +60,12 @@ document.addEventListener('mousemove', (e) => {
     mouseX = e.clientX / width;
     mouseY = e.clientY / height;
     lastMoveTime = time;
-    if (!interacting) interacting = true;
+    if (!interacting) {
+        interacting = true;
+        TRACE.log('INPUT', 'Mouse interaction started');
+    }
     isTouch = false;
+    if (TRACE.events) TRACE.log('INPUT', `Mouse: (${mouseX.toFixed(2)}, ${mouseY.toFixed(2)})`);
 });
 document.addEventListener('touchmove', (e) => {
     if (e.touches.length > 0) {
@@ -57,6 +79,7 @@ document.addEventListener('touchmove', (e) => {
 document.addEventListener('touchend', () => {
     currentPattern = (currentPattern + 1) % 5; // Adjusted patterns
     interacting = false;
+    TRACE.log('INPUT', `Touch ended, pattern changed to: ${currentPattern}`);
 });
 // Pulse
 function pulseScale() {
@@ -91,6 +114,7 @@ function hslToRgb(h, s, l) {
 }
 // EXTREME spinning polygons with fills and multiple layers
 function drawSpinningPolygons() {
+    if (TRACE.patterns) TRACE.log('PATTERN', 'Drawing spinning polygons');
     const centerX = width / 2;
     const centerY = height / 2;
     const numLayers = 15 + Math.floor(mouseY * 20); // MORE polygons
@@ -129,6 +153,7 @@ function drawSpinningPolygons() {
 }
 // Vector lines connecting spinning points
 function drawVectorLines() {
+    if (TRACE.patterns) TRACE.log('PATTERN', 'Drawing vector lines');
     const numPoints = 20 + Math.floor(mouseX * 20);
     const radius = Math.min(width, height) / 3;
     const centerX = width / 2;
@@ -159,6 +184,7 @@ function drawVectorLines() {
 }
 // Ethereal fractal inspired by Grey's patterns
 function drawGreyFractal() {
+    if (TRACE.patterns) TRACE.log('PATTERN', 'Drawing Grey fractal');
     const maxIterations = 80;
     const zoom = 1.5 + mouseX * 1 + Math.sin(time * 0.1) * 0.5;
     const imageData = ctx.createImageData(width, height);
@@ -197,6 +223,7 @@ function drawGreyFractal() {
 }
 // Symmetry lines like anatomical views
 function drawSymmetryLines() {
+    if (TRACE.patterns) TRACE.log('PATTERN', 'Drawing symmetry lines');
     const centerX = width / 2;
     const numLines = 10 + Math.floor(mouseY * 10);
 
@@ -224,6 +251,7 @@ function drawSymmetryLines() {
 }
 // Glitch for sudden changes
 function applyGlitch() {
+    TRACE.log('EFFECT', 'Applying glitch effect');
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
 
@@ -245,9 +273,14 @@ function applyGlitch() {
                 data[newIndex + 3] = data[origIndex + 3];
             }
         }
-        GGRESSIVE; Animation; Loop;
-        function animate() {
-            time += 0.04; // FASTER time progression
+// AGGRESSIVE Animation Loop
+function animate() {
+    time += 0.04; // FASTER time progression
+    
+    // Log every 60 frames (~1 second)
+    if (Math.floor(time * 25) % 60 === 0) {
+        TRACE.log('PERF', `Time: ${time.toFixed(2)}, Pattern: ${currentPattern}, Interacting: ${interacting}`);
+    }
 
 
             // Less fade = more trails
@@ -301,16 +334,26 @@ function applyGlitch() {
                         requestAnimationFrame(animate);
                 }
 
-                console.log('🎨 Alex Grey visualization LOADED - Prepare for visual mayhem!');
-                if (interacting && time - lastMoveTime > STOP_THRESHOLD) {
-                    currentPattern = (currentPattern + 1) % 5;
-                    interacting = false;
-                }
-
-                requestAnimationFrame(animate);
-            }
-
-            animate();
+        // Auto-cycle patterns for non-stop action
+    if (time % 10 < 0.04) { // Every 10 seconds
+        const oldPattern = currentPattern;
+        currentPattern = (currentPattern + 1) % 5;
+        if (oldPattern !== currentPattern) {
+            TRACE.log('PATTERN', `Auto-cycled from ${oldPattern} to ${currentPattern}`);
         }
     }
+
+    if (interacting && time - lastMoveTime > STOP_THRESHOLD) {
+        currentPattern = (currentPattern + 1) % 5;
+        interacting = false;
+        TRACE.log('PATTERN', `Interaction timeout, changed to pattern ${currentPattern}`);
+    }
+
+    requestAnimationFrame(animate);
 }
+
+console.log('🎨 Alex Grey visualization LOADED - Prepare for visual mayhem!');
+TRACE.log('INIT', 'Animation loop starting');
+console.log('%c=== TRACE CONTROLS ===\nTRACE.enabled = false  // Disable all tracing\nTRACE.performance = false  // Disable perf logs\nTRACE.events = false  // Disable event logs\nTRACE.patterns = false  // Disable pattern logs', 'color: yellow');
+
+animate();

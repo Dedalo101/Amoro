@@ -1,6 +1,29 @@
 // Alex Grey Inspired Visualization - Adaptive Performance
 // Automatically adjusts quality based on device capabilities
 
+// === TRACING SYSTEM ===
+const TRACE = {
+    enabled: true,
+    performance: true,
+    events: true,
+    log: (category, message, data = null) => {
+        if (!TRACE.enabled) return;
+        const timestamp = performance.now().toFixed(2);
+        console.log(`[${timestamp}ms] [${category}] ${message}`, data || '');
+    },
+    perf: (label, fn) => {
+        if (!TRACE.performance) return fn();
+        const start = performance.now();
+        const result = fn();
+        const duration = (performance.now() - start).toFixed(2);
+        console.log(`[PERF] ${label}: ${duration}ms`);
+        return result;
+    }
+};
+
+console.log('%c=== FRACTAL.JS INITIALIZATION ===', 'color: cyan; font-weight: bold');
+TRACE.log('INIT', 'Starting fractal visualization');
+
 const canvas = document.getElementById('fractalCanvas');
 if (!canvas) {
     console.error('Canvas element not found');
@@ -18,10 +41,12 @@ let deviceProfile = {
 
 // Detect device capabilities
 function detectDevice() {
+    TRACE.log('DEVICE', 'Detecting device capabilities...');
     const ua = navigator.userAgent.toLowerCase();
     const isMobile = /mobile|android|iphone|ipad|ipod/.test(ua);
     const isTablet = /ipad|tablet/.test(ua);
     const pixelRatio = window.devicePixelRatio || 1;
+    TRACE.log('DEVICE', `Mobile: ${isMobile}, Tablet: ${isTablet}, PixelRatio: ${pixelRatio}`);
     
     // Check for hardware acceleration
     const gl = document.createElement('canvas').getContext('webgl');
@@ -84,6 +109,7 @@ function detectDevice() {
     }
     
     console.log('Device Profile:', deviceProfile);
+    TRACE.log('DEVICE', 'Device profile set', deviceProfile);
 }
 
 detectDevice();
@@ -115,6 +141,7 @@ function resizeCanvas() {
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
     ctx.scale(dpr, dpr);
+    TRACE.log('CANVAS', `Resized: ${width}x${height}, DPR: ${dpr}`);
 }
 
 resizeCanvas();
@@ -125,6 +152,7 @@ canvas.addEventListener('mousemove', (e) => {
     mouseX = e.clientX / width;
     mouseY = e.clientY / height;
     autoRotate = false;
+    if (TRACE.events) TRACE.log('INPUT', `Mouse: (${mouseX.toFixed(2)}, ${mouseY.toFixed(2)})`);
 });
 
 canvas.addEventListener('touchmove', (e) => {
@@ -138,6 +166,7 @@ canvas.addEventListener('touchmove', (e) => {
 
 canvas.addEventListener('click', () => {
     currentPattern = (currentPattern + 1) % 5;
+    TRACE.log('INPUT', `Pattern changed to: ${currentPattern}`);
 });
 
 // Get color with rotation
@@ -154,6 +183,7 @@ function pulse() {
 // Pattern 1: Organic flowing shapes
 function drawPolygons() {
     const numShapes = Math.floor(deviceProfile.maxPolygons * 0.8);
+    TRACE.log('DRAW', `Drawing ${numShapes} polygons`);
     
     for (let i = 0; i < numShapes; i++) {
         const seed = i * 13.7;
@@ -405,6 +435,7 @@ function animate(currentTime) {
         // Update FPS calculation every second
         if (frameCount % 60 === 0) {
             actualFPS = Math.round(1000 / deltaTime);
+            TRACE.log('PERF', `FPS: ${actualFPS}, Pattern: ${currentPattern}, Time: ${time.toFixed(2)}`);
         }
         
         // Auto-rotate mouse position if not interacting
@@ -444,4 +475,6 @@ function animate(currentTime) {
 
 // Start
 console.log('Visualization started - Quality:', deviceProfile.quality, 'Target FPS:', deviceProfile.targetFPS);
+TRACE.log('INIT', 'Animation loop starting', { quality: deviceProfile.quality, targetFPS: deviceProfile.targetFPS });
+console.log('%c=== TRACE CONTROLS ===\nTRACE.enabled = false  // Disable all tracing\nTRACE.performance = false  // Disable perf logs\nTRACE.events = false  // Disable event logs', 'color: yellow');
 requestAnimationFrame(animate);
