@@ -1,299 +1,447 @@
-// Alex Grey Inspired Visualization for Tool Art
-// Vector lines, changing colors, spinning geometries at varying speeds/sizes/shapes
+// Alex Grey Inspired Visualization - Adaptive Performance
+// Automatically adjusts quality based on device capabilities
 
 const canvas = document.getElementById('fractalCanvas');
+if (!canvas) {
+    console.error('Canvas element not found');
+    document.body.innerHTML = '<div style="color: white; padding: 20px;">Error: Canvas not found</div>';
+}
 const ctx = canvas.getContext('2d');
 
+// Device detection and performance settings
+let deviceProfile = {
+    complexity: 1,
+    targetFPS: 60,
+    pixelRatio: 1,
+    quality: 'high'
+};
+
+// Detect device capabilities
+function detectDevice() {
+    const ua = navigator.userAgent.toLowerCase();
+    const isMobile = /mobile|android|iphone|ipad|ipod/.test(ua);
+    const isTablet = /ipad|tablet/.test(ua);
+    const pixelRatio = window.devicePixelRatio || 1;
+    
+    // Check for hardware acceleration
+    const gl = document.createElement('canvas').getContext('webgl');
+    const hasWebGL = !!gl;
+    
+    // Estimate device power
+    const cores = navigator.hardwareConcurrency || 2;
+    const memory = navigator.deviceMemory || 4;
+    
+    if (isMobile && !isTablet) {
+        // Mobile phone
+        deviceProfile = {
+            complexity: 0.4,
+            targetFPS: 30,
+            pixelRatio: Math.min(pixelRatio, 1.5),
+            quality: 'low',
+            maxParticles: 100,
+            maxPolygons: 8
+        };
+    } else if (isTablet) {
+        // Tablet
+        deviceProfile = {
+            complexity: 0.6,
+            targetFPS: 45,
+            pixelRatio: Math.min(pixelRatio, 2),
+            quality: 'medium',
+            maxParticles: 200,
+            maxPolygons: 12
+        };
+    } else if (cores >= 8 && memory >= 8) {
+        // High-end desktop
+        deviceProfile = {
+            complexity: 1,
+            targetFPS: 60,
+            pixelRatio: Math.min(pixelRatio, 2),
+            quality: 'ultra',
+            maxParticles: 400,
+            maxPolygons: 20
+        };
+    } else if (cores >= 4) {
+        // Mid-range desktop
+        deviceProfile = {
+            complexity: 0.8,
+            targetFPS: 60,
+            pixelRatio: Math.min(pixelRatio, 2),
+            quality: 'high',
+            maxParticles: 300,
+            maxPolygons: 15
+        };
+    } else {
+        // Low-end desktop
+        deviceProfile = {
+            complexity: 0.5,
+            targetFPS: 30,
+            pixelRatio: 1,
+            quality: 'medium',
+            maxParticles: 150,
+            maxPolygons: 10
+        };
+    }
+    
+    console.log('Device Profile:', deviceProfile);
+}
+
+detectDevice();
+
+// Adaptive FPS management
+let lastFrameTime = performance.now();
+let frameCount = 0;
+let actualFPS = 60;
+let frameInterval = 1000 / deviceProfile.targetFPS;
+
+// Canvas state
 let width, height;
 let mouseX = 0.5;
 let mouseY = 0.5;
 let time = 0;
 let currentPattern = 0;
-let interacting = false;
-let lastMoveTime = 0;
-let isTouch = false;
-let fadeOpacity = 0.03;
+let autoRotate = true;
 
-// Colors inspired by Alex Grey: vibrant, ethereal blues, purples, golds, reds
-const greyColors = ['#00FFFF', '#FF00FF', '#FFFF00', '#FF4500', '#9370DB'];
+// Colors - Alex Grey palette
+const colors = ['#00FFFF', '#FF00FF', '#FFFF00', '#FF4500', '#9370DB', '#00FF00', '#FF1493'];
 
-// Constants
-const TEMPO = 128 / 60;
-const PULSE_FREQ = TEMPO * 4; // Slower pulse for ethereal feel
-const FLASH_THRESHOLD = 0.95;
-const GLITCH_FREQ = TEMPO * 2;
-const STOP_THRESHOLD = 0.5;
-const COLOR_SWAP_SPEED = 0.03; // Slower swap
-
-// Resize
+// Resize canvas
 function resizeCanvas() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
+    const dpr = deviceProfile.pixelRatio;
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.scale(dpr, dpr);
 }
 
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
-// Mouse/touch
-document.addEventListener('mousemove', (e) => {
+// Input handling
+canvas.addEventListener('mousemove', (e) => {
     mouseX = e.clientX / width;
     mouseY = e.clientY / height;
-    lastMoveTime = time;
-    if (!interacting) interacting = true;
-    isTouch = false;
+    autoRotate = false;
 });
 
-document.addEventListener('touchmove', (e) => {
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
     if (e.touches.length > 0) {
         mouseX = e.touches[0].clientX / width;
         mouseY = e.touches[0].clientY / height;
-        lastMoveTime = time;
-        if (!interacting) interacting = true;
-        isTouch = true;
+        autoRotate = false;
     }
+}, { passive: false });
+
+canvas.addEventListener('click', () => {
+    currentPattern = (currentPattern + 1) % 5;
 });
 
-document.addEventListener('touchend', () => {
-    currentPattern = (currentPattern + 1) % 5; // Adjusted patterns
-    interacting = false;
-});
-
-// Pulse
-function pulseScale() {
-    return 1 + 0.2 * Math.abs(Math.sin(time * PULSE_FREQ * Math.PI * 2));
+// Get color with rotation
+function getColor(offset = 0) {
+    const index = Math.floor((time * 0.5 + offset) % colors.length);
+    return colors[index];
 }
 
-// Get color
-function getGreyColor(offset = 0) {
-    const index = Math.floor((time * COLOR_SWAP_SPEED + offset) % greyColors.length);
-    return greyColors[index];
+// Pulse effect
+function pulse() {
+    return 1 + 0.15 * Math.sin(time * 3);
 }
 
-// HSL to RGB
-function hslToRgb(h, s, l) {
-    let r, g, b;
-    if (s === 0) {
-        r = g = b = l;
-    } else {
-        const hue2rgb = (p, q, t) => {
-            if (t < 0) t += 1;
-            if (t > 1) t -= 1;
-            if (t < 1/6) return p + (q - p) * 6 * t;
-            if (t < 1/2) return q;
-            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-            return p;
-        };
-        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-        const p = 2 * l - q;
-        r = hue2rgb(p, q, h + 1/3);
-        g = hue2rgb(p, q, h);
-        b = hue2rgb(p, q, h - 1/3);
-    }
-    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-}
-
-// Spinning geometries: polygons at different speeds/sizes
-function drawSpinningPolygons() {
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const numLayers = 5 + Math.floor(mouseY * 5);
+// Pattern 1: Organic flowing shapes
+function drawPolygons() {
+    const numShapes = Math.floor(deviceProfile.maxPolygons * 0.8);
     
-    for (let layer = 0; layer < numLayers; layer++) {
-        const sides = 3 + layer % 4; // Vary shapes: triangle, square, pentagon, hexagon
-        const radius = (50 + layer * 30) * pulseScale() * (0.5 + mouseX);
-        const speed = (layer % 2 ? 1 : -1) * (0.05 + layer * 0.01); // Different speeds/directions
-        const rotation = time * speed;
+    for (let i = 0; i < numShapes; i++) {
+        const seed = i * 13.7;
+        const noiseX = Math.sin(time * 0.3 + seed) * Math.cos(time * 0.2 + seed * 1.3);
+        const noiseY = Math.cos(time * 0.25 + seed) * Math.sin(time * 0.35 + seed * 0.7);
+        
+        const x = width * (0.3 + noiseX * 0.2 + mouseX * 0.4);
+        const y = height * (0.3 + noiseY * 0.2 + mouseY * 0.4);
+        
+        const sides = 3 + Math.floor(Math.abs(Math.sin(time + seed)) * 5);
+        const radius = (30 + Math.sin(time * 0.7 + seed) * 50 + Math.cos(time * 0.4 + seed * 2) * 30) * deviceProfile.complexity;
+        const rotation = time * (0.3 + Math.sin(seed) * 0.5) + seed;
         
         ctx.save();
-        ctx.translate(centerX, centerY);
+        ctx.translate(x, y);
         ctx.rotate(rotation);
-        
         ctx.beginPath();
-        for (let i = 0; i < sides; i++) {
-            const angle = (i / sides) * Math.PI * 2;
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+        
+        for (let j = 0; j <= sides; j++) {
+            const a = (j / sides) * Math.PI * 2;
+            const rOffset = Math.sin(time * 2 + j + seed) * 15;
+            const r = radius + rOffset;
+            const px = Math.cos(a) * r;
+            const py = Math.sin(a) * r;
+            if (j === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
         }
-        ctx.closePath();
         
-        ctx.strokeStyle = getGreyColor(layer / numLayers);
-        ctx.lineWidth = 2 + (numLayers - layer) * 0.5;
+        ctx.strokeStyle = getColor(i / numShapes + time * 0.1);
+        ctx.lineWidth = 1.5 + Math.abs(Math.sin(time + seed)) * 2;
         ctx.stroke();
-        
         ctx.restore();
     }
 }
 
-// Vector lines connecting spinning points
+// Pattern 2: Chaotic vector field
 function drawVectorLines() {
-    const numPoints = 20 + Math.floor(mouseX * 20);
-    const radius = Math.min(width, height) / 3;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    
+    const numPoints = Math.floor(25 * deviceProfile.complexity);
     const points = [];
+    
     for (let i = 0; i < numPoints; i++) {
-        const angle = (i / numPoints) * Math.PI * 2 + time * (0.02 + i * 0.005);
-        const dist = radius * (0.5 + Math.sin(time + i) * 0.3);
+        const seed = i * 7.3;
+        const flowX = Math.sin(time * 0.4 + seed * 0.3) * Math.cos(time * 0.3 + seed);
+        const flowY = Math.cos(time * 0.35 + seed * 0.5) * Math.sin(time * 0.25 + seed * 1.2);
+        
+        const wanderX = Math.sin(time * 0.6 + seed * 2) * 0.15;
+        const wanderY = Math.cos(time * 0.5 + seed * 3) * 0.15;
+        
         points.push({
-            x: centerX + Math.cos(angle) * dist,
-            y: centerY + Math.sin(angle) * dist
+            x: width * (0.2 + flowX * 0.3 + wanderX + mouseX * 0.4),
+            y: height * (0.2 + flowY * 0.3 + wanderY + mouseY * 0.4)
         });
     }
     
     for (let i = 0; i < numPoints; i++) {
-        for (let j = i + 1; j < numPoints; j++) {
-            if (Math.random() < 0.2) { // Sparse connections for simplicity
+        const connectionCount = 2 + Math.floor(Math.random() * 3);
+        for (let c = 0; c < connectionCount; c++) {
+            const targetIdx = Math.floor(Math.random() * numPoints);
+            if (targetIdx === i) continue;
+            
+            const dx = points[targetIdx].x - points[i].x;
+            const dy = points[targetIdx].y - points[i].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const maxDist = Math.min(width, height) * 0.4;
+            
+            if (dist < maxDist) {
                 ctx.beginPath();
                 ctx.moveTo(points[i].x, points[i].y);
-                ctx.lineTo(points[j].x, points[j].y);
-                ctx.strokeStyle = getGreyColor((i + j) / (numPoints * 2));
-                ctx.lineWidth = 1 + Math.sin(time + i + j) * 0.5;
+                ctx.lineTo(points[targetIdx].x, points[targetIdx].y);
+                ctx.strokeStyle = getColor(i / numPoints);
+                ctx.lineWidth = 1 + (1 - dist / maxDist) * 2;
+                ctx.globalAlpha = 0.3 + (1 - dist / maxDist) * 0.5;
                 ctx.stroke();
+                ctx.globalAlpha = 1;
             }
         }
     }
 }
 
-// Ethereal fractal inspired by Grey's patterns
-function drawGreyFractal() {
-    const maxIterations = 80;
-    const zoom = 1.5 + mouseX * 1 + Math.sin(time * 0.1) * 0.5;
-    const imageData = ctx.createImageData(width, height);
-    const data = imageData.data;
+// Pattern 3: Flowing energy streams
+function drawKaleidoscope() {
+    const numStreams = Math.floor(40 * deviceProfile.complexity);
     
-    for (let px = 0; px < width; px += 3) {
-        for (let py = 0; py < height; py += 3) {
-            let x = (px - width / 2) / (0.3 * zoom * width) + mouseX * 0.3;
-            let y = (py - height / 2) / (0.3 * zoom * height) + mouseY * 0.3;
+    for (let i = 0; i < numStreams; i++) {
+        const seed = i * 11.4;
+        const lifetime = time * (0.5 + Math.sin(seed) * 0.3);
+        
+        const startX = width * (0.2 + Math.sin(seed * 2) * 0.3);
+        const startY = height * (0.2 + Math.cos(seed * 3) * 0.3);
+        
+        ctx.beginPath();
+        const segments = 20;
+        
+        for (let s = 0; s < segments; s++) {
+            const t = s / segments;
+            const phase = lifetime + s * 0.1;
             
-            let iteration = 0;
-            while (x * x + y * y <= 4 && iteration < maxIterations) {
-                const xTemp = x * x - y * y - 0.8 + Math.sin(time * 0.05);
-                y = 2 * x * y + 0.27 + Math.cos(time * 0.05);
-                x = xTemp;
-                iteration++;
-            }
+            const flowX = Math.sin(phase + seed) * Math.cos(phase * 0.7 + seed * 2);
+            const flowY = Math.cos(phase + seed * 1.5) * Math.sin(phase * 0.6 + seed);
             
-            if (iteration < maxIterations) {
-                const hue = (iteration / maxIterations * 360 + time * 10) % 360;
-                const rgb = hslToRgb(hue / 360, 0.8, 0.6);
-                for (let dx = 0; dx < 3 && px + dx < width; dx++) {
-                    for (let dy = 0; dy < 3 && py + dy < height; dy++) {
-                        const index = ((py + dy) * width + (px + dx)) * 4;
-                        data[index] = rgb[0];
-                        data[index + 1] = rgb[1];
-                        data[index + 2] = rgb[2];
-                        data[index + 3] = 128 + iteration * 2;
-                    }
-                }
-            }
+            const x = startX + flowX * width * 0.3 * t + mouseX * width * 0.2 * t;
+            const y = startY + flowY * height * 0.3 * t + mouseY * height * 0.2 * t;
+            
+            if (s === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        
+        ctx.strokeStyle = getColor(i / numStreams + time * 0.05);
+        ctx.lineWidth = 1 + Math.abs(Math.sin(time + seed)) * 2;
+        ctx.globalAlpha = 0.4 + Math.abs(Math.cos(time * 0.5 + seed)) * 0.4;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+    }x = Math.cos(offset) * length;
+            const y = Math.sin(offset) * length;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = getColor(j / numRays);
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        
+        ctx.restore();
+    }
+    
+    ctx.restore();
+}
+
+// Pattern 4: Particle System
+const particles = [];
+class Particle {
+    constructor() {
+        this.reset();
+    }
+    
+    reset() {
+        this.x = width / 2;
+        this.y = height / 2;
+        this.angle = Math.random() * Math.PI * 2;
+        this.speed = 1 + Math.random() * 3;
+        this.radius = 2 + Math.random() * 3;
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+        this.life = 1;
+    }
+    
+    update() {
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+        this.angle += (mouseX - 0.5) * 0.1;
+        this.life -= 0.01;
+        
+        if (this.life <= 0 || this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+            this.reset();
         }
     }
     
-    ctx.putImageData(imageData, 0, 0);
-}
-
-// Symmetry lines like anatomical views
-function drawSymmetryLines() {
-    const centerX = width / 2;
-    const numLines = 10 + Math.floor(mouseY * 10);
-    
-    for (let i = 0; i < numLines; i++) {
-        const angle = (i / numLines) * Math.PI * 2 + time * 0.03;
-        const length = height * 0.4 * (0.5 + Math.sin(time + i) * 0.3);
-        
-        const x1 = centerX + Math.cos(angle) * length;
-        const y1 = height / 2 + Math.sin(angle) * length;
-        const x2 = centerX - Math.cos(angle) * length; // Symmetry
-        const y2 = height / 2 - Math.sin(angle) * length;
-        
+    draw() {
         ctx.beginPath();
-        ctx.moveTo(centerX, height / 2);
-        ctx.lineTo(x1, y1);
-        ctx.strokeStyle = getGreyColor(i / numLines);
-        ctx.lineWidth = 1.5 + pulseScale();
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(centerX, height / 2);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.life * 0.8;
+        ctx.fill();
+        ctx.globalAlpha = 1;
     }
 }
 
-// Glitch for sudden changes
-function applyGlitch() {
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
+function initParticles() {
+    const count = Math.floor(deviceProfile.maxParticles * mouseY);
+    while (particles.length < count) {
+        particles.push(new Particle());
+    }
+    while (particles.length > count) {
+        particles.pop();
+    }
+}
+
+function drawParticles() {
+    initParticles();
+    particles.forEach(p => {
+        p.update();
+        p.draw();
+    });
+}Organic web of chaos
+function drawMandala() {
+    const numNodes = Math.floor(12 * deviceProfile.complexity);
+    const nodes = [];
     
-    const numSlices = 4 + Math.floor(Math.random() * 4);
-    for (let s = 0; s < numSlices; s++) {
-        const sliceY = Math.floor(Math.random() * height);
-        const sliceHeight = Math.floor(15 + Math.random() * 25);
-        const shift = Math.floor(-40 + Math.random() * 80);
+    for (let i = 0; i < numNodes; i++) {
+        const seed = i * 9.8;
+        const orbitRadius = (100 + Math.sin(seed) * 80) * deviceProfile.complexity;
+        const orbitSpeed = 0.3 + Math.cos(seed * 2) * 0.2;
+        const orbitPhase = time * orbitSpeed + seed;
         
-        for (let y = sliceY; y < sliceY + sliceHeight && y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const origIndex = (y * width + x) * 4;
-                const newX = (x + shift + width) % width;
-                const newIndex = (y * width + newX) * 4;
+        const wobbleX = Math.sin(time * 1.3 + seed * 3) * 40;
+        const wobbleY = Math.cos(time * 1.1 + seed * 4) * 40;
+        
+        const baseX = width / 2 + Math.cos(orbitPhase) * orbitRadius;
+        const baseY = height / 2 + Math.sin(orbitPhase) * orbitRadius;
+        
+        nodes.push({
+            x: baseX + wobbleX + (mouseX - 0.5) * width * 0.2,
+            y: baseY + wobbleY + (mouseY - 0.5) * height * 0.2,
+            seed: seed
+        });
+    }
+    
+    for (let i = 0; i < numNodes; i++) {
+        for (let j = i + 1; j < numNodes; j++) {
+            const dx = nodes[j].x - nodes[i].x;
+            const dy = nodes[j].y - nodes[i].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const maxDist = 200 * deviceProfile.complexity;
+            
+            if (dist < maxDist && Math.random() < 0.4) {
+                ctx.beginPath();
+                ctx.moveTo(nodes[i].x, nodes[i].y);
                 
-                data[newIndex] = data[origIndex];
-                data[newIndex + 1] = data[origIndex + 1];
-                data[newIndex + 2] = data[origIndex + 2];
-                data[newIndex + 3] = data[origIndex + 3];
+                const cpx = (nodes[i].x + nodes[j].x) / 2 + Math.sin(time + i + j) * 50;
+                const cpy = (nodes[i].y + nodes[j].y) / 2 + Math.cos(time + i + j) * 50;
+                ctx.quadraticCurveTo(cpx, cpy, nodes[j].x, nodes[j].y);
+                
+                ctx.strokeStyle = getColor((i + j) / (numNodes * 2));
+                ctx.lineWidth = 1 + (1 - dist / maxDist) * 3;
+                ctx.globalAlpha = 0.2 + (1 - dist / maxDist) * 0.6;
+                ctx.stroke();
+                ctx.globalAlpha = 1;
             }
         }
+        
+        ctx.beginPath();
+        ctx.arc(nodes[i].x, nodes[i].y, 3 + Math.sin(time + nodes[i].seed) * 2, 0, Math.PI * 2);
+        ctx.fillStyle = getColor(i / numNodes);
+        ctx.fillStyle = getColor(ring / rings);
+        ctx.lineWidth = 3 - ring * 0.3;
+        ctx.stroke();
     }
-    
-    ctx.putImageData(imageData, 0, 0);
 }
 
-// Animation
-function animate() {
-    time += 0.02;
+// Main animation loop with adaptive FPS
+function animate(currentTime) {
+    // Calculate actual FPS
+    const deltaTime = currentTime - lastFrameTime;
     
-    fadeOpacity = Math.min(0.08, fadeOpacity + 0.00005); // Slow disappear
-    ctx.fillStyle = `rgba(0, 0, 0, ${fadeOpacity})`;
-    ctx.fillRect(0, 0, width, height);
-    
-    if (Math.sin(time * PULSE_FREQ * Math.PI * 2) > FLASH_THRESHOLD) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    if (deltaTime >= frameInterval) {
+        lastFrameTime = currentTime - (deltaTime % frameInterval);
+        frameCount++;
+        
+        // Update FPS calculation every second
+        if (frameCount % 60 === 0) {
+            actualFPS = Math.round(1000 / deltaTime);
+        }
+        
+        // Auto-rotate mouse position if not interacting
+        if (autoRotate) {
+            mouseX = 0.5 + Math.sin(time * 0.3) * 0.3;
+            mouseY = 0.5 + Math.cos(time * 0.2) * 0.3;
+        }
+        
+        // Clear with fade trail
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
         ctx.fillRect(0, 0, width, height);
-    }
-    
-    switch (currentPattern) {
-        case 0:
-            drawSpinningPolygons();
-            break;
-        case 1:
-            drawVectorLines();
-            break;
-        case 2:
-            drawGreyFractal();
-            break;
-        case 3:
-            drawSymmetryLines();
-            break;
-        case 4:
-            drawSpinningPolygons();
-            drawVectorLines();
-            break;
-    }
-    
-    if (Math.sin(time * GLITCH_FREQ * Math.PI * 2) > 0.95 || Math.random() < 0.005) {
-        applyGlitch();
-    }
-    
-    if (interacting && time - lastMoveTime > STOP_THRESHOLD) {
-        currentPattern = (currentPattern + 1) % 5;
-        interacting = false;
+        
+        // Draw current pattern
+        switch (currentPattern) {
+            case 0:
+                drawPolygons();
+                break;
+            case 1:
+                drawVectorLines();
+                break;
+            case 2:
+                drawKaleidoscope();
+                break;
+            case 3:
+                drawParticles();
+                break;
+            case 4:
+                drawMandala();
+                break;
+        }
+        
+        time += 0.03;
     }
     
     requestAnimationFrame(animate);
 }
 
-animate();
+// Start
+console.log('Visualization started - Quality:', deviceProfile.quality, 'Target FPS:', deviceProfile.targetFPS);
+requestAnimationFrame(animate);
