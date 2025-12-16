@@ -1,345 +1,299 @@
-// Fresh Psytrance Visual Engine
-// New implementation with kaleidoscope effects, particle systems, and audio-reactive patterns
+// Alex Grey Inspired Visualization for Tool Art
+// Vector lines, changing colors, spinning geometries at varying speeds/sizes/shapes
 
-class PsyVisualizer {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
-        this.particles = [];
-        this.kaleidoscopeSegments = 12;
-        this.hueShift = 0;
-        this.intensity = 1;
-        this.pointer = { x: 0.5, y: 0.5 };
-        this.activeScene = 0;
-        this.transitionProgress = 0;
-        this.glitchTimer = 0;
-        
-        this.init();
-    }
-    
-    init() {
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        
-        this.canvas.addEventListener('mousemove', (e) => {
-            this.pointer.x = e.clientX / this.canvas.width;
-            this.pointer.y = e.clientY / this.canvas.height;
-        });
-        
-        this.canvas.addEventListener('click', () => {
-            this.activeScene = (this.activeScene + 1) % 5;
-            this.transitionProgress = 0;
-        });
-        
-        for (let i = 0; i < 150; i++) {
-            this.particles.push(new Particle(this.canvas.width, this.canvas.height));
-        }
-        
-        this.animate();
-    }
-    
-    resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    }
-    
-    renderKaleidoscope(drawFunc) {
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
-        
-        for (let i = 0; i < this.kaleidoscopeSegments; i++) {
-            this.ctx.save();
-            this.ctx.translate(centerX, centerY);
-            this.ctx.rotate((Math.PI * 2 * i) / this.kaleidoscopeSegments);
-            
-            if (i % 2 === 0) {
-                this.ctx.scale(1, -1);
-            }
-            
-            drawFunc.call(this);
-            this.ctx.restore();
-        }
-    }
-    
-    scene1_flowField() {
-        const gridSize = 40;
-        const flowScale = 0.003;
-        
-        for (let x = 0; x < this.canvas.width; x += gridSize) {
-            for (let y = 0; y < this.canvas.height; y += gridSize) {
-                const angle = Math.sin(x * flowScale + this.hueShift) * 
-                             Math.cos(y * flowScale + this.hueShift) * Math.PI * 2;
-                const length = 20 * this.intensity;
-                
-                const endX = x + Math.cos(angle) * length;
-                const endY = y + Math.sin(angle) * length;
-                
-                const gradient = this.ctx.createLinearGradient(x, y, endX, endY);
-                const hue1 = (this.hueShift * 30 + x * 0.5) % 360;
-                const hue2 = (this.hueShift * 30 + y * 0.5) % 360;
-                
-                gradient.addColorStop(0, `hsla(${hue1}, 100%, 50%, 0.6)`);
-                gradient.addColorStop(1, `hsla(${hue2}, 100%, 50%, 0.3)`);
-                
-                this.ctx.strokeStyle = gradient;
-                this.ctx.lineWidth = 3;
-                this.ctx.beginPath();
-                this.ctx.moveTo(x, y);
-                this.ctx.lineTo(endX, endY);
-                this.ctx.stroke();
-            }
-        }
-    }
-    
-    scene2_particleNexus() {
-        this.particles.forEach(p => {
-            p.update(this.canvas.width, this.canvas.height, this.pointer);
-            
-            const hue = (p.hue + this.hueShift * 10) % 360;
-            this.ctx.fillStyle = `hsla(${hue}, 100%, 50%, ${p.alpha})`;
-            this.ctx.beginPath();
-            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // Connect nearby particles
-            this.particles.forEach(other => {
-                const dx = p.x - other.x;
-                const dy = p.y - other.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist < 100) {
-                    this.ctx.strokeStyle = `hsla(${hue}, 100%, 50%, ${0.2 * (1 - dist / 100)})`;
-                    this.ctx.lineWidth = 1;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(p.x, p.y);
-                    this.ctx.lineTo(other.x, other.y);
-                    this.ctx.stroke();
-                }
-            });
-        });
-    }
-    
-    scene3_geometricMorph() {
-        this.renderKaleidoscope(function() {
-            const sides = 3 + Math.floor(this.pointer.x * 8);
-            const radius = 100 + Math.sin(this.hueShift) * 50;
-            const rotation = this.hueShift * 0.5;
-            
-            for (let layer = 0; layer < 5; layer++) {
-                const layerRadius = radius * (1 + layer * 0.3);
-                const hue = (this.hueShift * 20 + layer * 60) % 360;
-                
-                this.ctx.strokeStyle = `hsla(${hue}, 100%, 50%, ${0.8 - layer * 0.15})`;
-                this.ctx.lineWidth = 3 - layer * 0.4;
-                this.ctx.beginPath();
-                
-                for (let i = 0; i <= sides; i++) {
-                    const angle = (i / sides) * Math.PI * 2 + rotation;
-                    const px = Math.cos(angle) * layerRadius;
-                    const py = Math.sin(angle) * layerRadius;
-                    
-                    if (i === 0) {
-                        this.ctx.moveTo(px, py);
-                    } else {
-                        this.ctx.lineTo(px, py);
-                    }
-                }
-                
-                this.ctx.closePath();
-                this.ctx.stroke();
-            }
-        });
-    }
-    
-    scene4_waveInterference() {
-        const waves = 5;
-        const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
-        const data = imageData.data;
-        
-        for (let x = 0; x < this.canvas.width; x += 2) {
-            for (let y = 0; y < this.canvas.height; y += 2) {
-                let value = 0;
-                
-                for (let w = 0; w < waves; w++) {
-                    const waveX = this.canvas.width * (0.2 + w * 0.15);
-                    const waveY = this.canvas.height * (0.3 + Math.sin(w + this.hueShift) * 0.2);
-                    const dx = x - waveX;
-                    const dy = y - waveY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    
-                    value += Math.sin(dist * 0.05 - this.hueShift * 2) * 0.5 + 0.5;
-                }
-                
-                value /= waves;
-                const hue = (value * 360 + this.hueShift * 30) % 360;
-                const [r, g, b] = this.hslToRgb(hue / 360, 1, 0.5);
-                
-                for (let dx = 0; dx < 2 && x + dx < this.canvas.width; dx++) {
-                    for (let dy = 0; dy < 2 && y + dy < this.canvas.height; dy++) {
-                        const idx = ((y + dy) * this.canvas.width + (x + dx)) * 4;
-                        data[idx] = r;
-                        data[idx + 1] = g;
-                        data[idx + 2] = b;
-                        data[idx + 3] = 255;
-                    }
-                }
-            }
-        }
-        
-        this.ctx.putImageData(imageData, 0, 0);
-    }
-    
-    scene5_vortexTunnel() {
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
-        const maxRadius = Math.max(this.canvas.width, this.canvas.height);
-        
-        for (let radius = maxRadius; radius > 0; radius -= 10) {
-            const segments = Math.floor(radius / 5);
-            const rotation = this.hueShift + (maxRadius - radius) * 0.01;
-            const hue = ((maxRadius - radius) / maxRadius * 360 + this.hueShift * 20) % 360;
-            
-            this.ctx.strokeStyle = `hsla(${hue}, 100%, 50%, ${0.3})`;
-            this.ctx.lineWidth = 2;
-            this.ctx.beginPath();
-            
-            for (let i = 0; i <= segments; i++) {
-                const angle = (i / segments) * Math.PI * 2 + rotation;
-                const twist = Math.sin(radius * 0.02 + this.hueShift) * 0.5;
-                const x = centerX + Math.cos(angle + twist) * radius;
-                const y = centerY + Math.sin(angle + twist) * radius;
-                
-                if (i === 0) {
-                    this.ctx.moveTo(x, y);
-                } else {
-                    this.ctx.lineTo(x, y);
-                }
-            }
-            
-            this.ctx.closePath();
-            this.ctx.stroke();
-        }
-    }
-    
-    applyGlitchEffect() {
-        if (Math.random() < 0.02) {
-            const sliceHeight = 20 + Math.random() * 50;
-            const sliceY = Math.random() * (this.canvas.height - sliceHeight);
-            const offset = (Math.random() - 0.5) * 100;
-            
-            const slice = this.ctx.getImageData(0, sliceY, this.canvas.width, sliceHeight);
-            this.ctx.putImageData(slice, offset, sliceY);
-        }
-        
-        if (Math.random() < 0.01) {
-            this.ctx.globalCompositeOperation = 'difference';
-            this.ctx.fillStyle = `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 0.1)`;
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            this.ctx.globalCompositeOperation = 'source-over';
-        }
-    }
-    
-    hslToRgb(h, s, l) {
-        let r, g, b;
-        
-        if (s === 0) {
-            r = g = b = l;
-        } else {
-            const hue2rgb = (p, q, t) => {
-                if (t < 0) t += 1;
-                if (t > 1) t -= 1;
-                if (t < 1/6) return p + (q - p) * 6 * t;
-                if (t < 1/2) return q;
-                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                return p;
-            };
-            
-            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-            const p = 2 * l - q;
-            r = hue2rgb(p, q, h + 1/3);
-            g = hue2rgb(p, q, h);
-            b = hue2rgb(p, q, h - 1/3);
-        }
-        
-        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-    }
-    
-    animate() {
-        this.hueShift += 0.02;
-        this.glitchTimer += 0.02;
-        this.transitionProgress = Math.min(1, this.transitionProgress + 0.02);
-        
-        // Slow fade trail effect
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Render active scene
-        switch(this.activeScene) {
-            case 0:
-                this.scene1_flowField();
-                break;
-            case 1:
-                this.scene2_particleNexus();
-                break;
-            case 2:
-                this.scene3_geometricMorph();
-                break;
-            case 3:
-                this.scene4_waveInterference();
-                break;
-            case 4:
-                this.scene5_vortexTunnel();
-                break;
-        }
-        
-        // Random glitch effects
-        if (this.glitchTimer > 1 && Math.random() < 0.05) {
-            this.applyGlitchEffect();
-            this.glitchTimer = 0;
-        }
-        
-        requestAnimationFrame(() => this.animate());
-    }
+const canvas = document.getElementById('fractalCanvas');
+const ctx = canvas.getContext('2d');
+
+let width, height;
+let mouseX = 0.5;
+let mouseY = 0.5;
+let time = 0;
+let currentPattern = 0;
+let interacting = false;
+let lastMoveTime = 0;
+let isTouch = false;
+let fadeOpacity = 0.03;
+
+// Colors inspired by Alex Grey: vibrant, ethereal blues, purples, golds, reds
+const greyColors = ['#00FFFF', '#FF00FF', '#FFFF00', '#FF4500', '#9370DB'];
+
+// Constants
+const TEMPO = 128 / 60;
+const PULSE_FREQ = TEMPO * 4; // Slower pulse for ethereal feel
+const FLASH_THRESHOLD = 0.95;
+const GLITCH_FREQ = TEMPO * 2;
+const STOP_THRESHOLD = 0.5;
+const COLOR_SWAP_SPEED = 0.03; // Slower swap
+
+// Resize
+function resizeCanvas() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
 }
 
-class Particle {
-    constructor(width, height) {
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * 2;
-        this.vy = (Math.random() - 0.5) * 2;
-        this.size = 2 + Math.random() * 4;
-        this.hue = Math.random() * 360;
-        this.alpha = 0.5 + Math.random() * 0.5;
-    }
-    
-    update(width, height, pointer) {
-        // Attract to pointer
-        const dx = pointer.x * width - this.x;
-        const dy = pointer.y * height - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        if (dist > 0) {
-            this.vx += (dx / dist) * 0.05;
-            this.vy += (dy / dist) * 0.05;
-        }
-        
-        // Velocity damping
-        this.vx *= 0.98;
-        this.vy *= 0.98;
-        
-        this.x += this.vx;
-        this.y += this.vy;
-        
-        // Wrap around edges
-        if (this.x < 0) this.x = width;
-        if (this.x > width) this.x = 0;
-        if (this.y < 0) this.y = height;
-        if (this.y > height) this.y = 0;
-    }
-}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    new PsyVisualizer('fractalCanvas');
+// Mouse/touch
+document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX / width;
+    mouseY = e.clientY / height;
+    lastMoveTime = time;
+    if (!interacting) interacting = true;
+    isTouch = false;
 });
+
+document.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 0) {
+        mouseX = e.touches[0].clientX / width;
+        mouseY = e.touches[0].clientY / height;
+        lastMoveTime = time;
+        if (!interacting) interacting = true;
+        isTouch = true;
+    }
+});
+
+document.addEventListener('touchend', () => {
+    currentPattern = (currentPattern + 1) % 5; // Adjusted patterns
+    interacting = false;
+});
+
+// Pulse
+function pulseScale() {
+    return 1 + 0.2 * Math.abs(Math.sin(time * PULSE_FREQ * Math.PI * 2));
+}
+
+// Get color
+function getGreyColor(offset = 0) {
+    const index = Math.floor((time * COLOR_SWAP_SPEED + offset) % greyColors.length);
+    return greyColors[index];
+}
+
+// HSL to RGB
+function hslToRgb(h, s, l) {
+    let r, g, b;
+    if (s === 0) {
+        r = g = b = l;
+    } else {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        };
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+// Spinning geometries: polygons at different speeds/sizes
+function drawSpinningPolygons() {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const numLayers = 5 + Math.floor(mouseY * 5);
+    
+    for (let layer = 0; layer < numLayers; layer++) {
+        const sides = 3 + layer % 4; // Vary shapes: triangle, square, pentagon, hexagon
+        const radius = (50 + layer * 30) * pulseScale() * (0.5 + mouseX);
+        const speed = (layer % 2 ? 1 : -1) * (0.05 + layer * 0.01); // Different speeds/directions
+        const rotation = time * speed;
+        
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(rotation);
+        
+        ctx.beginPath();
+        for (let i = 0; i < sides; i++) {
+            const angle = (i / sides) * Math.PI * 2;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        
+        ctx.strokeStyle = getGreyColor(layer / numLayers);
+        ctx.lineWidth = 2 + (numLayers - layer) * 0.5;
+        ctx.stroke();
+        
+        ctx.restore();
+    }
+}
+
+// Vector lines connecting spinning points
+function drawVectorLines() {
+    const numPoints = 20 + Math.floor(mouseX * 20);
+    const radius = Math.min(width, height) / 3;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    
+    const points = [];
+    for (let i = 0; i < numPoints; i++) {
+        const angle = (i / numPoints) * Math.PI * 2 + time * (0.02 + i * 0.005);
+        const dist = radius * (0.5 + Math.sin(time + i) * 0.3);
+        points.push({
+            x: centerX + Math.cos(angle) * dist,
+            y: centerY + Math.sin(angle) * dist
+        });
+    }
+    
+    for (let i = 0; i < numPoints; i++) {
+        for (let j = i + 1; j < numPoints; j++) {
+            if (Math.random() < 0.2) { // Sparse connections for simplicity
+                ctx.beginPath();
+                ctx.moveTo(points[i].x, points[i].y);
+                ctx.lineTo(points[j].x, points[j].y);
+                ctx.strokeStyle = getGreyColor((i + j) / (numPoints * 2));
+                ctx.lineWidth = 1 + Math.sin(time + i + j) * 0.5;
+                ctx.stroke();
+            }
+        }
+    }
+}
+
+// Ethereal fractal inspired by Grey's patterns
+function drawGreyFractal() {
+    const maxIterations = 80;
+    const zoom = 1.5 + mouseX * 1 + Math.sin(time * 0.1) * 0.5;
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+    
+    for (let px = 0; px < width; px += 3) {
+        for (let py = 0; py < height; py += 3) {
+            let x = (px - width / 2) / (0.3 * zoom * width) + mouseX * 0.3;
+            let y = (py - height / 2) / (0.3 * zoom * height) + mouseY * 0.3;
+            
+            let iteration = 0;
+            while (x * x + y * y <= 4 && iteration < maxIterations) {
+                const xTemp = x * x - y * y - 0.8 + Math.sin(time * 0.05);
+                y = 2 * x * y + 0.27 + Math.cos(time * 0.05);
+                x = xTemp;
+                iteration++;
+            }
+            
+            if (iteration < maxIterations) {
+                const hue = (iteration / maxIterations * 360 + time * 10) % 360;
+                const rgb = hslToRgb(hue / 360, 0.8, 0.6);
+                for (let dx = 0; dx < 3 && px + dx < width; dx++) {
+                    for (let dy = 0; dy < 3 && py + dy < height; dy++) {
+                        const index = ((py + dy) * width + (px + dx)) * 4;
+                        data[index] = rgb[0];
+                        data[index + 1] = rgb[1];
+                        data[index + 2] = rgb[2];
+                        data[index + 3] = 128 + iteration * 2;
+                    }
+                }
+            }
+        }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+}
+
+// Symmetry lines like anatomical views
+function drawSymmetryLines() {
+    const centerX = width / 2;
+    const numLines = 10 + Math.floor(mouseY * 10);
+    
+    for (let i = 0; i < numLines; i++) {
+        const angle = (i / numLines) * Math.PI * 2 + time * 0.03;
+        const length = height * 0.4 * (0.5 + Math.sin(time + i) * 0.3);
+        
+        const x1 = centerX + Math.cos(angle) * length;
+        const y1 = height / 2 + Math.sin(angle) * length;
+        const x2 = centerX - Math.cos(angle) * length; // Symmetry
+        const y2 = height / 2 - Math.sin(angle) * length;
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX, height / 2);
+        ctx.lineTo(x1, y1);
+        ctx.strokeStyle = getGreyColor(i / numLines);
+        ctx.lineWidth = 1.5 + pulseScale();
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX, height / 2);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+}
+
+// Glitch for sudden changes
+function applyGlitch() {
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    
+    const numSlices = 4 + Math.floor(Math.random() * 4);
+    for (let s = 0; s < numSlices; s++) {
+        const sliceY = Math.floor(Math.random() * height);
+        const sliceHeight = Math.floor(15 + Math.random() * 25);
+        const shift = Math.floor(-40 + Math.random() * 80);
+        
+        for (let y = sliceY; y < sliceY + sliceHeight && y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const origIndex = (y * width + x) * 4;
+                const newX = (x + shift + width) % width;
+                const newIndex = (y * width + newX) * 4;
+                
+                data[newIndex] = data[origIndex];
+                data[newIndex + 1] = data[origIndex + 1];
+                data[newIndex + 2] = data[origIndex + 2];
+                data[newIndex + 3] = data[origIndex + 3];
+            }
+        }
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+}
+
+// Animation
+function animate() {
+    time += 0.02;
+    
+    fadeOpacity = Math.min(0.08, fadeOpacity + 0.00005); // Slow disappear
+    ctx.fillStyle = `rgba(0, 0, 0, ${fadeOpacity})`;
+    ctx.fillRect(0, 0, width, height);
+    
+    if (Math.sin(time * PULSE_FREQ * Math.PI * 2) > FLASH_THRESHOLD) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.fillRect(0, 0, width, height);
+    }
+    
+    switch (currentPattern) {
+        case 0:
+            drawSpinningPolygons();
+            break;
+        case 1:
+            drawVectorLines();
+            break;
+        case 2:
+            drawGreyFractal();
+            break;
+        case 3:
+            drawSymmetryLines();
+            break;
+        case 4:
+            drawSpinningPolygons();
+            drawVectorLines();
+            break;
+    }
+    
+    if (Math.sin(time * GLITCH_FREQ * Math.PI * 2) > 0.95 || Math.random() < 0.005) {
+        applyGlitch();
+    }
+    
+    if (interacting && time - lastMoveTime > STOP_THRESHOLD) {
+        currentPattern = (currentPattern + 1) % 5;
+        interacting = false;
+    }
+    
+    requestAnimationFrame(animate);
+}
+
+animate();
