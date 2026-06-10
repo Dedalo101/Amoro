@@ -1,7 +1,7 @@
 // Mixcloud embeds + contact bubble behavior
 // Source: https://www.mixcloud.com/amooro/
 
-const CONTACT_EMAIL = 'GlueRecords@revamail.com';
+const CONTACT_EMAIL = 'Bookings@GlueRecords.club';
 
 const FEATURED_SHOW = {
   title: 'AMORO - TRICKS OR TREAT?',
