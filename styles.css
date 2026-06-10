@@ -89,14 +89,21 @@ body {
 
 .mixcloudEngine {
     position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 1px;
-    height: 1px;
+    left: -10000px;
+    top: -10000px;
+    width: 0;
+    height: 0;
     border: 0;
+    margin: 0;
+    padding: 0;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
     overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    transform: scale(0);
+    z-index: -1;
 }
 
 .links {
