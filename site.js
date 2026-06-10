@@ -63,12 +63,11 @@ function showKey(showUrl) {
 
 function playShow(showUrl) {
   const key = showKey(showUrl);
-  if (!mixcloudWidget) return;
-  if (!mixcloudReady) {
+  if (!mixcloudWidget || !mixcloudReady) {
     pendingShowKey = key;
     return;
   }
-  mixcloudWidget.load(key, true).catch(() => {});
+  startPlayback(mixcloudWidget, key, true);
 }
 
 function waveformAmplitudeAt(index) {
@@ -132,19 +131,18 @@ async function loadWaveform() {
   }
 }
 
+function startPlayback(widget, key, autoplay) {
+  return widget.load(key, !!autoplay).catch(() => {
+    if (autoplay) return widget.play().catch(() => {});
+  });
+}
+
 function tryAutoplay(widget) {
-  const kick = () => {
-    widget.play()
-      .then(() => widget.getIsPaused())
-      .then((paused) => {
-        if (paused) return widget.load(FEATURED_SHOW.key, true).then(() => widget.play());
-      })
-      .catch(() => widget.load(FEATURED_SHOW.key, true).then(() => widget.play()).catch(() => {}));
-  };
+  const kick = () => startPlayback(widget, FEATURED_SHOW.key, true);
 
   kick();
-  window.setTimeout(kick, 600);
-  window.setTimeout(kick, 1800);
+  window.setTimeout(kick, 800);
+  window.setTimeout(kick, 2200);
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) kick();
@@ -161,34 +159,27 @@ function tryAutoplay(widget) {
   document.addEventListener('touchstart', unlock, { once: true, passive: true });
 }
 
-function bindMixcloudWidget(widget) {
-  mixcloudWidget = widget;
-  widget.ready.then(() => {
-    mixcloudReady = true;
-    tryAutoplay(widget);
+function bindMixcloudEvents(widget) {
+  widget.events.play.on(() => {
+    updateAudioState(window.AmoroAudio.position, FEATURED_SHOW.duration, true);
+  });
 
-    if (pendingShowKey) {
-      widget.load(pendingShowKey, true).catch(() => {});
-      pendingShowKey = null;
-    }
+  widget.events.pause.on(() => {
+    window.AmoroAudio.playing = false;
+  });
 
-    widget.events.play.on(() => {
-      updateAudioState(window.AmoroAudio.position, FEATURED_SHOW.duration, true);
-    });
+  widget.events.progress.on((position, duration) => {
+    updateAudioState(position, duration, true);
+  });
 
-    widget.events.pause.on(() => {
-      window.AmoroAudio.playing = false;
-    });
+  widget.events.ended.on(() => {
+    window.AmoroAudio.playing = false;
+    window.AmoroAudio.energy = 0;
+    window.AmoroAudio.beat = 0;
+  });
 
-    widget.events.progress.on((position, duration) => {
-      updateAudioState(position, duration, true);
-    });
-
-    widget.events.ended.on(() => {
-      window.AmoroAudio.playing = false;
-      window.AmoroAudio.energy = 0;
-      window.AmoroAudio.beat = 0;
-    });
+  widget.events.error.on(() => {
+    window.setTimeout(() => startPlayback(widget, FEATURED_SHOW.key, true), 600);
   });
 }
 
@@ -198,14 +189,27 @@ function initFeaturedPlayer() {
 
   const boot = () => {
     if (typeof Mixcloud === 'undefined' || !Mixcloud.PlayerWidget) {
-      window.setTimeout(boot, 120);
+      window.setTimeout(boot, 150);
       return;
     }
     if (mixcloudWidget) return;
-    bindMixcloudWidget(Mixcloud.PlayerWidget(iframe));
+
+    mixcloudWidget = Mixcloud.PlayerWidget(iframe);
+    mixcloudWidget.ready.then(() => {
+      mixcloudReady = true;
+      bindMixcloudEvents(mixcloudWidget);
+      tryAutoplay(mixcloudWidget);
+
+      if (pendingShowKey) {
+        startPlayback(mixcloudWidget, pendingShowKey, true);
+        pendingShowKey = null;
+      }
+    });
   };
 
-  iframe.addEventListener('load', boot);
+  iframe.addEventListener('load', boot, { once: true });
+  if (document.readyState === 'complete') boot();
+  else window.addEventListener('load', boot, { once: true });
   boot();
 }
 

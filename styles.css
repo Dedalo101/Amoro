@@ -91,11 +91,11 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: -72px;
+    bottom: 0;
     height: 60px;
-    opacity: 0;
+    opacity: 0.001;
     pointer-events: none;
-    z-index: -1;
+    z-index: 1;
     overflow: hidden;
 }
 
