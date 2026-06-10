@@ -1,7 +1,6 @@
 // Mixcloud embeds + contact bubble behavior
 // Source: https://www.mixcloud.com/amooro/
 
-const MIXCLOUD_PROFILE_URL = 'https://www.mixcloud.com/amooro/';
 const CONTACT_EMAIL = 'GlueRecords@revamail.com';
 
 const FEATURED_SHOW = {
@@ -57,11 +56,29 @@ function shuffleInPlace(arr) {
   return arr;
 }
 
-function mixcloudEmbedSrc(showUrl) {
-  // Mixcloud widget expects an encoded feed path.
-  const u = new URL(showUrl);
-  const feed = encodeURIComponent(u.pathname);
-  return `https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=1&feed=${feed}`;
+function showKey(showUrl) {
+  return new URL(showUrl).pathname;
+}
+
+function setNowPlayingTitle(title) {
+  const el = document.getElementById('nowPlayingTitle');
+  if (el) el.textContent = title;
+}
+
+function setNowPlayingToggle(isPlaying) {
+  const btn = document.getElementById('nowPlayingToggle');
+  if (!btn) return;
+  btn.textContent = isPlaying ? 'Pause' : 'Play';
+  btn.setAttribute('aria-label', isPlaying ? 'Pause playback' : 'Play playback');
+}
+
+function playShow(showUrl, title) {
+  if (!mixcloudWidget) return;
+  const resolvedTitle = title || SHOWS.find((show) => show.url === showUrl)?.title || 'Now playing';
+  setNowPlayingTitle(resolvedTitle);
+  mixcloudWidget.load(showKey(showUrl), true).then(() => {
+    setNowPlayingToggle(true);
+  }).catch(() => {});
 }
 
 function waveformAmplitudeAt(index) {
@@ -140,17 +157,27 @@ function tryAutoplay(widget) {
 
 function initFeaturedPlayer() {
   const iframe = document.getElementById('mixcloudPlayer');
+  const toggle = document.getElementById('nowPlayingToggle');
   if (!iframe || typeof Mixcloud === 'undefined' || !Mixcloud.PlayerWidget) return;
 
   mixcloudWidget = Mixcloud.PlayerWidget(iframe);
   mixcloudWidget.ready.then(() => {
     tryAutoplay(mixcloudWidget);
+    setNowPlayingToggle(true);
+
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        mixcloudWidget.togglePlay().catch(() => {});
+      });
+    }
 
     mixcloudWidget.events.play.on(() => {
+      setNowPlayingToggle(true);
       updateAudioState(window.AmoroAudio.position, FEATURED_SHOW.duration, true);
     });
 
     mixcloudWidget.events.pause.on(() => {
+      setNowPlayingToggle(false);
       window.AmoroAudio.playing = false;
     });
 
@@ -167,19 +194,14 @@ function initFeaturedPlayer() {
 }
 
 function bindSetCardsToPlayer() {
-  if (!mixcloudWidget) return;
-
   const root = document.getElementById('mixcloudSets');
   if (!root) return;
 
   root.addEventListener('click', (e) => {
-    const card = e.target.closest('.setCard');
-    if (!card || !mixcloudWidget) return;
-    const showUrl = card.dataset.showUrl;
-    if (!showUrl) return;
-
-    const key = new URL(showUrl).pathname;
-    mixcloudWidget.load(key, true).catch(() => {});
+    const trigger = e.target.closest('[data-show-url]');
+    if (!trigger) return;
+    e.preventDefault();
+    playShow(trigger.dataset.showUrl, trigger.dataset.showTitle);
   });
 }
 
@@ -199,27 +221,24 @@ function renderShows() {
     const titleRow = document.createElement('div');
     titleRow.className = 'setTitle';
 
-    const link = document.createElement('a');
-    link.href = show.url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = show.title;
+    const nameBtn = document.createElement('button');
+    nameBtn.type = 'button';
+    nameBtn.className = 'setName';
+    nameBtn.dataset.showUrl = show.url;
+    nameBtn.dataset.showTitle = show.title;
+    nameBtn.textContent = show.title;
 
-    const meta = document.createElement('small');
-    meta.textContent = 'Mixcloud';
+    const playBtn = document.createElement('button');
+    playBtn.type = 'button';
+    playBtn.className = 'setPlay';
+    playBtn.dataset.showUrl = show.url;
+    playBtn.dataset.showTitle = show.title;
+    playBtn.setAttribute('aria-label', `Play ${show.title}`);
+    playBtn.textContent = 'Play';
 
-    titleRow.appendChild(link);
-    titleRow.appendChild(meta);
-
-    const iframe = document.createElement('iframe');
-    iframe.className = 'mixcloudFrame';
-    iframe.loading = 'lazy';
-    iframe.allow = 'autoplay';
-    iframe.src = mixcloudEmbedSrc(show.url);
-    iframe.title = `${show.title} (Mixcloud embed)`;
-
+    titleRow.appendChild(nameBtn);
+    titleRow.appendChild(playBtn);
     card.appendChild(titleRow);
-    card.appendChild(iframe);
 
     frag.appendChild(card);
   }
@@ -302,23 +321,14 @@ function initContactBubble() {
   });
 }
 
-function initHeaderFromMixcloud() {
-  // Keep the requested header text; this just ensures title matches.
+function initHeader() {
   document.title = 'Ⲁ Ⲙ Ⲟ ꓤ Ⲟ — Never Not Playing';
-
-  // Keep accent shifting over time for a living/glitchy feel.
   setAccentFromTime();
   setInterval(setAccentFromTime, 900);
-
-  // Ensure Mixcloud link is correct if it exists.
-  const links = document.querySelectorAll('a[href*="mixcloud.com"]');
-  for (const a of links) {
-    if (a.getAttribute('href') === '#') a.setAttribute('href', MIXCLOUD_PROFILE_URL);
-  }
 }
 
 function init() {
-  initHeaderFromMixcloud();
+  initHeader();
   loadWaveform();
   initFeaturedPlayer();
   renderShows();

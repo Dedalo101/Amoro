@@ -181,11 +181,45 @@ body {
     box-shadow: 0 -8px 28px rgba(0, 255, 255, 0.08);
 }
 
+.nowPlayingBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px 0;
+}
+
+.nowPlayingTitle {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.92;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nowPlayingToggle {
+    flex: 0 0 auto;
+    color: #fff;
+    font: inherit;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(0, 0, 0, 0.45);
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.nowPlayingToggle:hover {
+    border-color: rgba(255, 255, 255, 0.55);
+}
+
 .nowPlayingFrame {
     display: block;
     width: 100%;
-    height: 60px;
+    height: 52px;
     border: 0;
+    pointer-events: none;
 }
 
 .links {
@@ -283,24 +317,39 @@ body {
     margin-bottom: 10px;
 }
 
-.setTitle a {
+.setName,
+.setPlay {
+    font: inherit;
     color: #fff;
-    text-decoration: none;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+}
+
+.setName {
     border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
 }
 
-.setTitle a:hover {
+.setName:hover {
     border-bottom-style: solid;
 }
 
-.setTitle small {
-    opacity: 0.75;
+.setPlay {
+    flex: 0 0 auto;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.45);
+    padding: 6px 12px;
+    border-radius: 999px;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 11px;
 }
 
-.mixcloudFrame {
-    width: 100%;
-    height: 120px;
-    border: 0;
+.setPlay:hover {
+    border-color: rgba(255, 255, 255, 0.55);
 }
 
 .contactLine {
