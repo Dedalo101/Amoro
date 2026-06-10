@@ -4,6 +4,30 @@
 const MIXCLOUD_PROFILE_URL = 'https://www.mixcloud.com/amooro/';
 const CONTACT_EMAIL = 'GlueRecords@revamail.com';
 
+const FEATURED_SHOW = {
+  title: 'AMORO - TRICKS OR TREAT?',
+  url: 'https://www.mixcloud.com/amooro/amoro-tricks-or-treat/',
+  key: '/amooro/amoro-tricks-or-treat/',
+  waveformUrl: 'https://waveform.mixcloud.com/5/d/3/5/29c3-46ee-4ebe-b59e-a3b1054f41bd.json?v=0.1',
+  duration: 5131
+};
+
+window.AmoroAudio = {
+  energy: 0,
+  bass: 0,
+  mid: 0,
+  high: 0,
+  beat: 0,
+  playing: false,
+  position: 0
+};
+
+let waveformSamples = null;
+let waveformHeight = 1200;
+let smoothedEnergy = 0;
+let beatPulse = 0;
+let mixcloudWidget = null;
+
 // Extracted from Mixcloud profile (All shows)
 const SHOWS = [
   { title: 'Amoro - Sticky fingers', url: 'https://www.mixcloud.com/amooro/deep-fingers/' },
@@ -40,6 +64,125 @@ function mixcloudEmbedSrc(showUrl) {
   return `https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=1&feed=${feed}`;
 }
 
+function waveformAmplitudeAt(index) {
+  if (!waveformSamples || !waveformSamples.length) return 0;
+  const clamped = Math.max(0, Math.min(waveformSamples.length - 1, index));
+  const pair = waveformSamples[clamped];
+  if (!pair) return 0;
+  return Math.max(0, (pair[1] - pair[0]) / waveformHeight);
+}
+
+function windowAmplitude(centerIndex, radius) {
+  let total = 0;
+  let count = 0;
+  for (let i = centerIndex - radius; i <= centerIndex + radius; i++) {
+    total += waveformAmplitudeAt(i);
+    count += 1;
+  }
+  return count ? total / count : 0;
+}
+
+function updateAudioState(position, duration, isPlaying) {
+  const dur = duration || FEATURED_SHOW.duration;
+  const idx = dur > 0 ? Math.floor((position / dur) * (waveformSamples?.length || 0)) : 0;
+
+  let instant = waveformAmplitudeAt(idx);
+  let bass = windowAmplitude(idx, 48);
+  let mid = windowAmplitude(idx, 16);
+  let high = windowAmplitude(idx, 4);
+
+  if (!waveformSamples && isPlaying) {
+    instant = 0.3 + 0.22 * Math.abs(Math.sin(position * 0.42));
+    bass = 0.28 + 0.2 * Math.abs(Math.sin(position * 0.18));
+    mid = 0.32 + 0.18 * Math.abs(Math.sin(position * 0.65));
+    high = 0.25 + 0.24 * Math.abs(Math.sin(position * 1.35));
+  }
+
+  smoothedEnergy += (instant - smoothedEnergy) * 0.22;
+  if (instant > smoothedEnergy * 1.28 + 0.08) {
+    beatPulse = 1;
+  }
+  beatPulse *= 0.86;
+
+  window.AmoroAudio.energy = smoothedEnergy;
+  window.AmoroAudio.bass = bass;
+  window.AmoroAudio.mid = mid;
+  window.AmoroAudio.high = high;
+  window.AmoroAudio.beat = beatPulse;
+  window.AmoroAudio.playing = !!isPlaying;
+  window.AmoroAudio.position = position;
+}
+
+async function loadWaveform() {
+  try {
+    const res = await fetch(FEATURED_SHOW.waveformUrl);
+    if (!res.ok) return;
+    const json = await res.json();
+    waveformSamples = json.data || null;
+    waveformHeight = json.height || 1200;
+  } catch (_) {
+    waveformSamples = null;
+  }
+}
+
+function tryAutoplay(widget) {
+  const start = () => widget.play().catch(() => {});
+  widget.load(FEATURED_SHOW.key, true).then(start).catch(start);
+
+  const unlock = () => {
+    widget.play().catch(() => {});
+    document.removeEventListener('pointerdown', unlock);
+    document.removeEventListener('keydown', unlock);
+  };
+  document.addEventListener('pointerdown', unlock, { once: true });
+  document.addEventListener('keydown', unlock, { once: true });
+}
+
+function initFeaturedPlayer() {
+  const iframe = document.getElementById('mixcloudPlayer');
+  if (!iframe || typeof Mixcloud === 'undefined' || !Mixcloud.PlayerWidget) return;
+
+  mixcloudWidget = Mixcloud.PlayerWidget(iframe);
+  mixcloudWidget.ready.then(() => {
+    tryAutoplay(mixcloudWidget);
+
+    mixcloudWidget.events.play.on(() => {
+      updateAudioState(window.AmoroAudio.position, FEATURED_SHOW.duration, true);
+    });
+
+    mixcloudWidget.events.pause.on(() => {
+      window.AmoroAudio.playing = false;
+    });
+
+    mixcloudWidget.events.progress.on((position, duration) => {
+      updateAudioState(position, duration, true);
+    });
+
+    mixcloudWidget.events.ended.on(() => {
+      window.AmoroAudio.playing = false;
+      window.AmoroAudio.energy = 0;
+      window.AmoroAudio.beat = 0;
+    });
+  });
+}
+
+function bindSetCardsToPlayer() {
+  if (!mixcloudWidget) return;
+
+  const root = document.getElementById('mixcloudSets');
+  if (!root) return;
+
+  root.addEventListener('click', (e) => {
+    const card = e.target.closest('.setCard');
+    if (!card || !mixcloudWidget) return;
+    const showUrl = card.dataset.showUrl;
+    if (!showUrl) return;
+
+    const key = new URL(showUrl).pathname;
+    mixcloudWidget.load(key, true).catch(() => {});
+  });
+}
+
 function renderShows() {
   const root = document.getElementById('mixcloudSets');
   if (!root) return;
@@ -50,6 +193,8 @@ function renderShows() {
   for (const show of shows) {
     const card = document.createElement('article');
     card.className = 'setCard';
+    card.dataset.showUrl = show.url;
+    if (show.url === FEATURED_SHOW.url) card.classList.add('isFeatured');
 
     const titleRow = document.createElement('div');
     titleRow.className = 'setTitle';
@@ -174,7 +319,10 @@ function initHeaderFromMixcloud() {
 
 function init() {
   initHeaderFromMixcloud();
+  loadWaveform();
+  initFeaturedPlayer();
   renderShows();
+  bindSetCardsToPlayer();
   initContactBubble();
 }
 

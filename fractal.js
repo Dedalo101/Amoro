@@ -13,6 +13,18 @@ let interacting = false;
 let lastMoveTime = 0;
 let isTouch = false;
 let fadeOpacity = 0.03;
+let lastPatternBeat = -999;
+
+function readAudio() {
+    return window.AmoroAudio || {
+        energy: 0,
+        bass: 0,
+        mid: 0,
+        high: 0,
+        beat: 0,
+        playing: false
+    };
+}
 
 // Colors: vibrant, ethereal blues, purples, golds, reds
 const greyColors = ['#00FFFF', '#FF00FF', '#FFFF00', '#FF4500', '#9370DB'];
@@ -94,8 +106,9 @@ document.addEventListener('touchend', () => {
 });
 
 // Pulse
-function pulseScale() {
-    return 1 + 0.2 * Math.abs(Math.sin(time * PULSE_FREQ * Math.PI * 2));
+function pulseScale(audio) {
+    const drive = audio.energy * 0.55 + audio.bass * 0.35 + audio.beat * 0.45;
+    return 1 + 0.2 * Math.abs(Math.sin(time * PULSE_FREQ * Math.PI * 2)) + drive * 0.55;
 }
 
 // Get color
@@ -128,15 +141,15 @@ function hslToRgb(h, s, l) {
 }
 
 // Spinning geometries: polygons at different speeds/sizes
-function drawSpinningPolygons() {
+function drawSpinningPolygons(audio) {
     const centerX = width / 2;
     const centerY = height / 2;
-    const numLayers = 5 + Math.floor(mouseY * 5);
+    const numLayers = 4 + Math.floor(mouseY * 4) + Math.floor(audio.energy * 7) + Math.floor(audio.beat * 3);
     
     for (let layer = 0; layer < numLayers; layer++) {
-        const sides = 3 + layer % 4; // Vary shapes: triangle, square, pentagon, hexagon
-        const radius = (50 + layer * 30) * pulseScale() * (0.5 + mouseX);
-        const speed = (layer % 2 ? 1 : -1) * (0.05 + layer * 0.01); // Different speeds/directions
+        const sides = 3 + Math.floor((layer + audio.mid * 6 + audio.beat * 2) % 6);
+        const radius = (50 + layer * 30) * pulseScale(audio) * (0.5 + mouseX + audio.bass * 0.35);
+        const speed = (layer % 2 ? 1 : -1) * (0.05 + layer * 0.01 + audio.energy * 0.18 + audio.high * 0.12);
         const rotation = time * speed;
         
         ctx.save();
@@ -153,8 +166,8 @@ function drawSpinningPolygons() {
         }
         ctx.closePath();
         
-        ctx.strokeStyle = getGreyColor(layer / numLayers);
-        ctx.lineWidth = 2 + (numLayers - layer) * 0.5;
+        ctx.strokeStyle = getGreyColor(layer / numLayers + audio.high * 0.4);
+        ctx.lineWidth = 2 + (numLayers - layer) * 0.5 + audio.beat * 2.2;
         ctx.stroke();
         
         ctx.restore();
@@ -181,16 +194,16 @@ function drawSpinningPolygons() {
 }
 
 // Vector lines connecting spinning points
-function drawVectorLines() {
-    const numPoints = 20 + Math.floor(mouseX * 20);
-    const radius = Math.min(width, height) / 3;
+function drawVectorLines(audio) {
+    const numPoints = 16 + Math.floor(mouseX * 16) + Math.floor(audio.mid * 18) + Math.floor(audio.beat * 6);
+    const radius = Math.min(width, height) / (2.8 - audio.bass * 0.35);
     const centerX = width / 2;
     const centerY = height / 2;
     
     const points = [];
     for (let i = 0; i < numPoints; i++) {
-        const angle = (i / numPoints) * Math.PI * 2 + time * (0.02 + i * 0.005);
-        const dist = radius * (0.5 + Math.sin(time + i) * 0.3);
+        const angle = (i / numPoints) * Math.PI * 2 + time * (0.02 + i * 0.005 + audio.energy * 0.08);
+        const dist = radius * (0.5 + Math.sin(time + i) * (0.3 + audio.high * 0.25));
         points.push({
             x: centerX + Math.cos(angle) * dist,
             y: centerY + Math.sin(angle) * dist
@@ -199,12 +212,13 @@ function drawVectorLines() {
     
     for (let i = 0; i < numPoints; i++) {
         for (let j = i + 1; j < numPoints; j++) {
-            if (Math.random() < 0.2) { // Sparse connections for simplicity
+            const connectChance = 0.14 + audio.energy * 0.28 + audio.beat * 0.2;
+            if (Math.random() < connectChance) {
                 ctx.beginPath();
                 ctx.moveTo(points[i].x, points[i].y);
                 ctx.lineTo(points[j].x, points[j].y);
-                ctx.strokeStyle = getGreyColor((i + j) / (numPoints * 2));
-                ctx.lineWidth = 1 + Math.sin(time + i + j) * 0.5;
+                ctx.strokeStyle = getGreyColor((i + j) / (numPoints * 2) + audio.mid * 0.3);
+                ctx.lineWidth = 1 + Math.sin(time + i + j) * 0.5 + audio.beat * 1.4;
                 ctx.stroke();
             }
         }
@@ -212,9 +226,9 @@ function drawVectorLines() {
 }
 
 // Ethereal fractal inspired by Grey's patterns
-function drawGreyFractal() {
-    const maxIterations = 80;
-    const zoom = 1.5 + mouseX * 1 + Math.sin(time * 0.1) * 0.5;
+function drawGreyFractal(audio) {
+    const maxIterations = 70 + Math.floor(audio.energy * 35);
+    const zoom = 1.5 + mouseX * 1 + Math.sin(time * 0.1) * 0.5 + audio.bass * 0.9;
     const imageData = ctx.createImageData(width, height);
     const data = imageData.data;
     
@@ -225,8 +239,9 @@ function drawGreyFractal() {
             
             let iteration = 0;
             while (x * x + y * y <= 4 && iteration < maxIterations) {
-                const xTemp = x * x - y * y - 0.8 + Math.sin(time * 0.05);
-                y = 2 * x * y + 0.27 + Math.cos(time * 0.05);
+                const twist = 0.05 + audio.mid * 0.12 + audio.beat * 0.08;
+                const xTemp = x * x - y * y - 0.8 + Math.sin(time * twist);
+                y = 2 * x * y + 0.27 + Math.cos(time * twist);
                 x = xTemp;
                 iteration++;
             }
@@ -251,13 +266,13 @@ function drawGreyFractal() {
 }
 
 // Symmetry lines like anatomical views
-function drawSymmetryLines() {
+function drawSymmetryLines(audio) {
     const centerX = width / 2;
-    const numLines = 10 + Math.floor(mouseY * 10);
+    const numLines = 8 + Math.floor(mouseY * 8) + Math.floor(audio.high * 14) + Math.floor(audio.beat * 4);
     
     for (let i = 0; i < numLines; i++) {
-        const angle = (i / numLines) * Math.PI * 2 + time * 0.03;
-        const length = height * 0.4 * (0.5 + Math.sin(time + i) * 0.3);
+        const angle = (i / numLines) * Math.PI * 2 + time * (0.03 + audio.energy * 0.06);
+        const length = height * 0.4 * (0.5 + Math.sin(time + i) * (0.3 + audio.bass * 0.25));
         
         const x1 = centerX + Math.cos(angle) * length;
         const y1 = height / 2 + Math.sin(angle) * length;
@@ -268,7 +283,7 @@ function drawSymmetryLines() {
         ctx.moveTo(centerX, height / 2);
         ctx.lineTo(x1, y1);
         ctx.strokeStyle = getGreyColor(i / numLines);
-        ctx.lineWidth = 1.5 + pulseScale();
+        ctx.lineWidth = 1.5 + pulseScale(audio);
         ctx.stroke();
         
         ctx.beginPath();
@@ -308,37 +323,46 @@ function applyGlitch() {
 
 // Animation
 function animate() {
-    time += 0.02;
+    const audio = readAudio();
+    const motion = audio.playing ? 1 + audio.energy * 2.8 + audio.beat * 1.6 : 1;
+    time += 0.02 * motion;
     
-    fadeOpacity = Math.min(0.08, fadeOpacity + 0.00005); // Slow disappear
+    fadeOpacity = Math.min(0.08 + audio.energy * 0.04, fadeOpacity + 0.00005 + audio.beat * 0.004);
     ctx.fillStyle = `rgba(0, 0, 0, ${fadeOpacity})`;
     ctx.fillRect(0, 0, width, height);
     
-    if (Math.sin(time * PULSE_FREQ * Math.PI * 2) > FLASH_THRESHOLD) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    const flashDrive = Math.sin(time * (PULSE_FREQ + audio.bass * 2) * Math.PI * 2);
+    if (flashDrive > FLASH_THRESHOLD - audio.beat * 0.2) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.12 + audio.beat * 0.18})`;
         ctx.fillRect(0, 0, width, height);
+    }
+    
+    if (audio.beat > 0.82 && audio.playing && time - lastPatternBeat > 0.45) {
+        currentPattern = (currentPattern + 1) % 5;
+        lastPatternBeat = time;
     }
     
     switch (currentPattern) {
         case 0:
-            drawSpinningPolygons();
+            drawSpinningPolygons(audio);
             break;
         case 1:
-            drawVectorLines();
+            drawVectorLines(audio);
             break;
         case 2:
-            drawGreyFractal();
+            drawGreyFractal(audio);
             break;
         case 3:
-            drawSymmetryLines();
+            drawSymmetryLines(audio);
             break;
         case 4:
-            drawSpinningPolygons();
-            drawVectorLines();
+            drawSpinningPolygons(audio);
+            drawVectorLines(audio);
             break;
     }
     
-    if (Math.sin(time * GLITCH_FREQ * Math.PI * 2) > 0.95 || Math.random() < 0.005) {
+    const glitchChance = 0.005 + audio.high * 0.03 + audio.beat * 0.12;
+    if (Math.sin(time * (GLITCH_FREQ + audio.mid * 3) * Math.PI * 2) > 0.95 - audio.beat * 0.15 || Math.random() < glitchChance) {
         applyGlitch();
     }
     
