@@ -59,24 +59,24 @@ function showKey(showUrl) {
   return new URL(showUrl).pathname;
 }
 
-function setNowPlayingTitle(title) {
-  const el = document.getElementById('nowPlayingTitle');
-  if (el) el.textContent = title;
-}
-
-function setNowPlayingToggle(isPlaying) {
+function setNowPlayingToggle(isPlaying, title) {
   const btn = document.getElementById('nowPlayingToggle');
   if (!btn) return;
-  btn.textContent = isPlaying ? 'Pause' : 'Play';
-  btn.setAttribute('aria-label', isPlaying ? 'Pause playback' : 'Play playback');
+  btn.classList.toggle('isPlaying', isPlaying);
+  btn.classList.toggle('isPaused', !isPlaying);
+  const resolvedTitle = title || btn.dataset.trackTitle || FEATURED_SHOW.title;
+  btn.dataset.trackTitle = resolvedTitle;
+  btn.setAttribute(
+    'aria-label',
+    isPlaying ? `Pause ${resolvedTitle}` : `Play ${resolvedTitle}`
+  );
 }
 
 function playShow(showUrl, title) {
   if (!mixcloudWidget) return;
   const resolvedTitle = title || SHOWS.find((show) => show.url === showUrl)?.title || 'Now playing';
-  setNowPlayingTitle(resolvedTitle);
   mixcloudWidget.load(showKey(showUrl), true).then(() => {
-    setNowPlayingToggle(true);
+    setNowPlayingToggle(true, resolvedTitle);
   }).catch(() => {});
 }
 
@@ -143,15 +143,24 @@ async function loadWaveform() {
 
 function tryAutoplay(widget) {
   const start = () => widget.play().catch(() => {});
+
   widget.load(FEATURED_SHOW.key, true).then(start).catch(start);
+  window.setTimeout(start, 350);
+  window.setTimeout(start, 1200);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) start();
+  });
 
   const unlock = () => {
-    widget.play().catch(() => {});
+    start();
     document.removeEventListener('pointerdown', unlock);
     document.removeEventListener('keydown', unlock);
+    document.removeEventListener('touchstart', unlock);
   };
   document.addEventListener('pointerdown', unlock, { once: true });
   document.addEventListener('keydown', unlock, { once: true });
+  document.addEventListener('touchstart', unlock, { once: true, passive: true });
 }
 
 function initFeaturedPlayer() {
@@ -162,7 +171,7 @@ function initFeaturedPlayer() {
   mixcloudWidget = Mixcloud.PlayerWidget(iframe);
   mixcloudWidget.ready.then(() => {
     tryAutoplay(mixcloudWidget);
-    setNowPlayingToggle(true);
+    setNowPlayingToggle(true, FEATURED_SHOW.title);
 
     if (toggle) {
       toggle.addEventListener('click', () => {

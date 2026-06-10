@@ -39,19 +39,18 @@
 
     <a id="contactBubble" class="contactBubble" href="#" aria-label="Contact">@Contact</a>
 
-    <div id="nowPlaying" class="nowPlaying" aria-label="Now playing">
-        <div class="nowPlayingBar">
-            <p id="nowPlayingTitle" class="nowPlayingTitle">AMORO - TRICKS OR TREAT?</p>
-            <button id="nowPlayingToggle" class="nowPlayingToggle" type="button" aria-label="Pause playback">Pause</button>
-        </div>
+    <div id="nowPlaying" class="nowPlaying" aria-label="Playback controls">
         <iframe
             id="mixcloudPlayer"
-            class="nowPlayingFrame"
+            class="nowPlayingEngine"
             title="AMORO - TRICKS OR TREAT? player"
             allow="autoplay"
             tabindex="-1"
             src="https://www.mixcloud.com/widget/iframe/?feed=%2Famooro%2Famoro-tricks-or-treat%2F&hide_cover=1&hide_artwork=1&mini=1&autoplay=1&light=1"
         ></iframe>
+        <button id="nowPlayingToggle" class="nowPlayingToggle isPlaying" type="button" aria-label="Pause playback">
+            <span class="pauseIcon" aria-hidden="true"><span></span><span></span></span>
+        </button>
     </div>
     
     <script src="https://widget.mixcloud.com/media/js/widgetApi.js"></script>
