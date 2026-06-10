@@ -5,10 +5,7 @@ const CONTACT_EMAIL = 'GlueRecords@revamail.com';
 
 const FEATURED_SHOW = {
   title: 'AMORO - TRICKS OR TREAT?',
-  url: 'https://www.mixcloud.com/amooro/amoro-tricks-or-treat/',
-  key: '/amooro/amoro-tricks-or-treat/',
-  waveformUrl: 'https://waveform.mixcloud.com/5/d/3/5/29c3-46ee-4ebe-b59e-a3b1054f41bd.json?v=0.1',
-  duration: 5131
+  url: 'https://www.mixcloud.com/amooro/amoro-tricks-or-treat/'
 };
 
 window.AmoroAudio = {
@@ -20,13 +17,6 @@ window.AmoroAudio = {
   playing: false,
   position: 0
 };
-
-let waveformSamples = null;
-let waveformHeight = 1200;
-let smoothedEnergy = 0;
-let beatPulse = 0;
-const widgetCache = new Map();
-let activeWidget = null;
 
 // Extracted from Mixcloud profile (All shows)
 const SHOWS = [
@@ -60,9 +50,10 @@ function showKey(showUrl) {
   return new URL(showUrl).pathname;
 }
 
-function mixcloudEmbedSrc(showUrl) {
+function mixcloudEmbedSrc(showUrl, autoplay = false) {
   const feed = encodeURIComponent(showKey(showUrl));
-  return `https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=1&mini=1&feed=${feed}`;
+  const autoplayParam = autoplay ? '&autoplay=1' : '';
+  return `https://www.mixcloud.com/widget/iframe/?hide_cover=1&light=1&feed=${feed}${autoplayParam}`;
 }
 
 function findSetCard(showUrl) {
@@ -70,139 +61,20 @@ function findSetCard(showUrl) {
 }
 
 function pauseOtherPlayers(exceptIframe) {
-  for (const [iframe, widget] of widgetCache) {
-    if (iframe !== exceptIframe) widget.pause().catch(() => {});
+  for (const iframe of document.querySelectorAll('.mixcloudFrame')) {
+    if (iframe === exceptIframe) continue;
+    iframe.src = 'about:blank';
   }
 }
 
-function bindWidgetEvents(widget) {
-  widget.events.play.on(() => {
-    if (widget !== activeWidget) return;
-    updateAudioState(window.AmoroAudio.position, FEATURED_SHOW.duration, true);
-  });
-
-  widget.events.pause.on(() => {
-    if (widget !== activeWidget) return;
-    window.AmoroAudio.playing = false;
-  });
-
-  widget.events.progress.on((position, duration) => {
-    if (widget !== activeWidget) return;
-    updateAudioState(position, duration, true);
-  });
-
-  widget.events.ended.on(() => {
-    if (widget !== activeWidget) return;
-    window.AmoroAudio.playing = false;
-    window.AmoroAudio.energy = 0;
-    window.AmoroAudio.beat = 0;
-  });
-}
-
-function getWidget(iframe) {
-  if (widgetCache.has(iframe)) return widgetCache.get(iframe);
-  if (typeof Mixcloud === 'undefined' || !Mixcloud.PlayerWidget) return null;
-
-  const widget = Mixcloud.PlayerWidget(iframe);
-  widgetCache.set(iframe, widget);
-  widget.ready.then(() => bindWidgetEvents(widget));
-  return widget;
-}
-
-async function playShow(showUrl) {
+function playShow(showUrl) {
   const card = findSetCard(showUrl);
-  const iframe = card?.querySelector('.setPlayer');
+  const iframe = card?.querySelector('.mixcloudFrame');
   if (!iframe) return;
 
-  const widget = getWidget(iframe);
-  if (!widget) return;
-
   pauseOtherPlayers(iframe);
-  activeWidget = widget;
-
-  try {
-    await widget.ready;
-    await widget.play();
-  } catch (_) {
-    await widget.load(showKey(showUrl), true).catch(() => {});
-  }
-}
-
-function waveformAmplitudeAt(index) {
-  if (!waveformSamples || !waveformSamples.length) return 0;
-  const clamped = Math.max(0, Math.min(waveformSamples.length - 1, index));
-  const pair = waveformSamples[clamped];
-  if (!pair) return 0;
-  return Math.max(0, (pair[1] - pair[0]) / waveformHeight);
-}
-
-function windowAmplitude(centerIndex, radius) {
-  let total = 0;
-  let count = 0;
-  for (let i = centerIndex - radius; i <= centerIndex + radius; i++) {
-    total += waveformAmplitudeAt(i);
-    count += 1;
-  }
-  return count ? total / count : 0;
-}
-
-function updateAudioState(position, duration, isPlaying) {
-  const dur = duration || FEATURED_SHOW.duration;
-  const idx = dur > 0 ? Math.floor((position / dur) * (waveformSamples?.length || 0)) : 0;
-
-  let instant = waveformAmplitudeAt(idx);
-  let bass = windowAmplitude(idx, 48);
-  let mid = windowAmplitude(idx, 16);
-  let high = windowAmplitude(idx, 4);
-
-  if (!waveformSamples && isPlaying) {
-    instant = 0.3 + 0.22 * Math.abs(Math.sin(position * 0.42));
-    bass = 0.28 + 0.2 * Math.abs(Math.sin(position * 0.18));
-    mid = 0.32 + 0.18 * Math.abs(Math.sin(position * 0.65));
-    high = 0.25 + 0.24 * Math.abs(Math.sin(position * 1.35));
-  }
-
-  smoothedEnergy += (instant - smoothedEnergy) * 0.22;
-  if (instant > smoothedEnergy * 1.28 + 0.08) {
-    beatPulse = 1;
-  }
-  beatPulse *= 0.86;
-
-  window.AmoroAudio.energy = smoothedEnergy;
-  window.AmoroAudio.bass = bass;
-  window.AmoroAudio.mid = mid;
-  window.AmoroAudio.high = high;
-  window.AmoroAudio.beat = beatPulse;
-  window.AmoroAudio.playing = !!isPlaying;
-  window.AmoroAudio.position = position;
-}
-
-async function loadWaveform() {
-  try {
-    const res = await fetch(FEATURED_SHOW.waveformUrl);
-    if (!res.ok) return;
-    const json = await res.json();
-    waveformSamples = json.data || null;
-    waveformHeight = json.height || 1200;
-  } catch (_) {
-    waveformSamples = null;
-  }
-}
-
-function tryAutoplayFeatured() {
-  const kick = () => playShow(FEATURED_SHOW.url);
-  window.setTimeout(kick, 900);
-  window.setTimeout(kick, 2200);
-
-  const unlock = () => {
-    kick();
-    document.removeEventListener('pointerdown', unlock);
-    document.removeEventListener('keydown', unlock);
-    document.removeEventListener('touchstart', unlock);
-  };
-  document.addEventListener('pointerdown', unlock, { once: true });
-  document.addEventListener('keydown', unlock, { once: true });
-  document.addEventListener('touchstart', unlock, { once: true, passive: true });
+  iframe.src = mixcloudEmbedSrc(showUrl, true);
+  iframe.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function bindSetCardsToPlayer() {
@@ -211,10 +83,25 @@ function bindSetCardsToPlayer() {
 
   root.addEventListener('click', (e) => {
     const trigger = e.target.closest('[data-show-url]');
-    if (!trigger) return;
+    if (!trigger || e.target.closest('.mixcloudFrame')) return;
     e.preventDefault();
     playShow(trigger.dataset.showUrl);
   });
+}
+
+function tryAutoplayFeatured() {
+  const kick = () => playShow(FEATURED_SHOW.url);
+
+  const unlock = () => {
+    kick();
+    document.removeEventListener('pointerdown', unlock);
+    document.removeEventListener('keydown', unlock);
+    document.removeEventListener('touchstart', unlock);
+  };
+
+  document.addEventListener('pointerdown', unlock, { once: true });
+  document.addEventListener('keydown', unlock, { once: true });
+  document.addEventListener('touchstart', unlock, { once: true, passive: true });
 }
 
 function renderShows() {
@@ -271,7 +158,7 @@ function renderShows() {
     card.appendChild(titleRow);
 
     const iframe = document.createElement('iframe');
-    iframe.className = 'setPlayer';
+    iframe.className = 'mixcloudFrame';
     iframe.allow = 'autoplay';
     iframe.loading = 'lazy';
     iframe.src = mixcloudEmbedSrc(show.url);
@@ -284,7 +171,6 @@ function renderShows() {
   root.innerHTML = '';
   root.appendChild(frag);
 
-  // Subtle glitch pulse on random cards
   setInterval(() => {
     const cards = root.querySelectorAll('.setCard');
     if (!cards.length) return;
@@ -350,7 +236,6 @@ function initContactBubble() {
 
   bubble.addEventListener('mouseenter', onHover);
 
-  // Touch devices: treat taps as "hover" until armed, then open mail.
   bubble.addEventListener('click', (e) => {
     if (!armed) {
       e.preventDefault();
@@ -367,7 +252,6 @@ function initHeader() {
 
 function init() {
   initHeader();
-  loadWaveform();
   renderShows();
   bindSetCardsToPlayer();
   tryAutoplayFeatured();
