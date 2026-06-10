@@ -158,10 +158,27 @@ body {
 
 .setCard {
     position: relative;
-    padding: 12px 12px 10px;
+    padding: 0 0 10px;
     border: 1px solid rgba(255, 255, 255, 0.14);
     background: rgba(0, 0, 0, 0.38);
     overflow: hidden;
+}
+
+.setCover {
+    display: block;
+    width: 100%;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    background: #000;
+}
+
+.setArt {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
 }
 
 .setCard::before,
@@ -204,7 +221,7 @@ body {
     gap: 10px;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 10px;
+    margin: 10px 12px 0;
 }
 
 .setName,
