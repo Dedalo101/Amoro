@@ -181,7 +181,7 @@ function bindMixcloudWidget(widget) {
     });
 
     widget.events.progress.on((position, duration) => {
-      updateAudioState(position, duration, window.AmoroAudio.playing);
+      updateAudioState(position, duration, true);
     });
 
     widget.events.ended.on(() => {
