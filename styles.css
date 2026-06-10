@@ -89,20 +89,15 @@ body {
 
 .mixcloudEngine {
     position: fixed;
-    left: -10000px;
-    top: -10000px;
-    width: 0;
-    height: 0;
+    left: -200vw;
+    top: 0;
+    width: 320px;
+    height: 60px;
     border: 0;
     margin: 0;
     padding: 0;
     opacity: 0;
-    visibility: hidden;
     pointer-events: none;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    clip-path: inset(50%);
-    transform: scale(0);
     z-index: -1;
 }
 
@@ -177,7 +172,7 @@ body {
 .setArt {
     display: block;
     width: 100%;
-    aspect-ratio: 1;
+    height: 112px;
     object-fit: cover;
 }
 

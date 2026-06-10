@@ -29,15 +29,15 @@ let mixcloudWidget = null;
 
 // Extracted from Mixcloud profile (All shows)
 const SHOWS = [
-  { title: 'Amoro - Sticky fingers', url: 'https://www.mixcloud.com/amooro/deep-fingers/', art: 'https://thumbnailer.mixcloud.com/unsafe/320x320/extaudio/7/c/9/8/da36-f137-4765-9d1d-c8959886eb15' },
-  { title: 'AMORO - TRICKS OR TREAT?', url: 'https://www.mixcloud.com/amooro/amoro-tricks-or-treat/', art: 'https://thumbnailer.mixcloud.com/unsafe/320x320/extaudio/7/1/e/8/d88c-79f0-418c-bc1d-77887a0df249' },
-  { title: 'A M O R O - P A S S P O R T', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-p-a-s-s-p-o-r-t/', art: 'https://thumbnailer.mixcloud.com/unsafe/320x320/extaudio/c/7/7/f/05be-b85d-4a59-8506-23ebe6090199' },
-  { title: 'A M O R O - D A C I D', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-d-a-c-i-d/', art: 'https://thumbnailer.mixcloud.com/unsafe/320x320/extaudio/7/d/a/5/33db-f2ec-481c-9e6f-76284740a499' },
-  { title: 'Ⲁ Ⲙ Ⲟ Ꞅ Ⲟ - S T R A W B E R R Y M O O N 023*', url: 'https://www.mixcloud.com/amooro/%E2%B2%81-%E2%B2%99-%E2%B2%9F-%EA%9E%85-%E2%B2%9F-s-t-r-a-w-b-e-r-r-y-m-o-o-n-023/', art: 'https://thumbnailer.mixcloud.com/unsafe/320x320/extaudio/9/c/d/6/91d4-a424-46d4-a820-191cb435f21f' },
-  { title: 'A M O R O - D A R K F A C E', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-d-a-r-k-f-a-c-e/', art: 'https://thumbnailer.mixcloud.com/unsafe/320x320/extaudio/6/7/9/2/473c-8fa7-47da-9727-8c96ded4a83b' },
-  { title: 'W E L C O M E S U N R I S E [chapterONE]', url: 'https://www.mixcloud.com/amooro/w-e-l-c-o-m-e-s-u-n-r-i-s-e-chapterone/', art: 'https://thumbnailer.mixcloud.com/unsafe/320x320/extaudio/c/1/7/b/05c3-912f-4842-9627-36f56e288980' },
-  { title: 'A M O R O - 7.609.', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-7609/', art: 'https://thumbnailer.mixcloud.com/unsafe/320x320/extaudio/b/9/0/4/7267-175b-4296-9976-a4f1546d0987' },
-  { title: 'A M O R O - S O C O L', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-s-o-c-o-l/', art: 'https://thumbnailer.mixcloud.com/unsafe/320x320/extaudio/f/1/3/b/d661-8439-4bfc-aa61-76fe171567ed' }
+  { title: 'Amoro - Sticky fingers', url: 'https://www.mixcloud.com/amooro/deep-fingers/', art: 'https://thumbnailer.mixcloud.com/unsafe/120x120/extaudio/7/c/9/8/da36-f137-4765-9d1d-c8959886eb15' },
+  { title: 'AMORO - TRICKS OR TREAT?', url: 'https://www.mixcloud.com/amooro/amoro-tricks-or-treat/', art: 'https://thumbnailer.mixcloud.com/unsafe/120x120/extaudio/7/1/e/8/d88c-79f0-418c-bc1d-77887a0df249' },
+  { title: 'A M O R O - P A S S P O R T', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-p-a-s-s-p-o-r-t/', art: 'https://thumbnailer.mixcloud.com/unsafe/120x120/extaudio/c/7/7/f/05be-b85d-4a59-8506-23ebe6090199' },
+  { title: 'A M O R O - D A C I D', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-d-a-c-i-d/', art: 'https://thumbnailer.mixcloud.com/unsafe/120x120/extaudio/7/d/a/5/33db-f2ec-481c-9e6f-76284740a499' },
+  { title: 'Ⲁ Ⲙ Ⲟ Ꞅ Ⲟ - S T R A W B E R R Y M O O N 023*', url: 'https://www.mixcloud.com/amooro/%E2%B2%81-%E2%B2%99-%E2%B2%9F-%EA%9E%85-%E2%B2%9F-s-t-r-a-w-b-e-r-r-y-m-o-o-n-023/', art: 'https://thumbnailer.mixcloud.com/unsafe/120x120/extaudio/9/c/d/6/91d4-a424-46d4-a820-191cb435f21f' },
+  { title: 'A M O R O - D A R K F A C E', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-d-a-r-k-f-a-c-e/', art: 'https://thumbnailer.mixcloud.com/unsafe/120x120/extaudio/6/7/9/2/473c-8fa7-47da-9727-8c96ded4a83b' },
+  { title: 'W E L C O M E S U N R I S E [chapterONE]', url: 'https://www.mixcloud.com/amooro/w-e-l-c-o-m-e-s-u-n-r-i-s-e-chapterone/', art: 'https://thumbnailer.mixcloud.com/unsafe/120x120/extaudio/c/1/7/b/05c3-912f-4842-9627-36f56e288980' },
+  { title: 'A M O R O - 7.609.', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-7609/', art: 'https://thumbnailer.mixcloud.com/unsafe/120x120/extaudio/b/9/0/4/7267-175b-4296-9976-a4f1546d0987' },
+  { title: 'A M O R O - S O C O L', url: 'https://www.mixcloud.com/amooro/a-m-o-r-o-s-o-c-o-l/', art: 'https://thumbnailer.mixcloud.com/unsafe/120x120/extaudio/f/1/3/b/d661-8439-4bfc-aa61-76fe171567ed' }
 ];
 
 const ACCENTS = ['#00FFFF', '#FF00FF', '#FFFF00', '#FF4500', '#9370DB'];
@@ -126,18 +126,23 @@ async function loadWaveform() {
 }
 
 function tryAutoplay(widget) {
-  const start = () => widget.play().catch(() => {});
+  const kick = () => {
+    widget.load(FEATURED_SHOW.key, true)
+      .then(() => widget.play())
+      .catch(() => widget.play().catch(() => {}));
+  };
 
-  widget.load(FEATURED_SHOW.key, true).then(start).catch(start);
-  window.setTimeout(start, 350);
-  window.setTimeout(start, 1200);
+  kick();
+  window.setTimeout(kick, 500);
+  window.setTimeout(kick, 1500);
+  window.setTimeout(kick, 3000);
 
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) start();
+    if (!document.hidden) kick();
   });
 
   const unlock = () => {
-    start();
+    kick();
     document.removeEventListener('pointerdown', unlock);
     document.removeEventListener('keydown', unlock);
     document.removeEventListener('touchstart', unlock);
