@@ -26,6 +26,8 @@ let waveformHeight = 1200;
 let smoothedEnergy = 0;
 let beatPulse = 0;
 let mixcloudWidget = null;
+let mixcloudReady = false;
+let pendingShowKey = null;
 
 // Extracted from Mixcloud profile (All shows)
 const SHOWS = [
@@ -60,8 +62,13 @@ function showKey(showUrl) {
 }
 
 function playShow(showUrl) {
+  const key = showKey(showUrl);
   if (!mixcloudWidget) return;
-  mixcloudWidget.load(showKey(showUrl), true).catch(() => {});
+  if (!mixcloudReady) {
+    pendingShowKey = key;
+    return;
+  }
+  mixcloudWidget.load(key, true).catch(() => {});
 }
 
 function waveformAmplitudeAt(index) {
@@ -127,15 +134,17 @@ async function loadWaveform() {
 
 function tryAutoplay(widget) {
   const kick = () => {
-    widget.load(FEATURED_SHOW.key, true)
-      .then(() => widget.play())
-      .catch(() => widget.play().catch(() => {}));
+    widget.play()
+      .then(() => widget.getIsPaused())
+      .then((paused) => {
+        if (paused) return widget.load(FEATURED_SHOW.key, true).then(() => widget.play());
+      })
+      .catch(() => widget.load(FEATURED_SHOW.key, true).then(() => widget.play()).catch(() => {}));
   };
 
   kick();
-  window.setTimeout(kick, 500);
-  window.setTimeout(kick, 1500);
-  window.setTimeout(kick, 3000);
+  window.setTimeout(kick, 600);
+  window.setTimeout(kick, 1800);
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) kick();
@@ -152,32 +161,52 @@ function tryAutoplay(widget) {
   document.addEventListener('touchstart', unlock, { once: true, passive: true });
 }
 
-function initFeaturedPlayer() {
-  const iframe = document.getElementById('mixcloudPlayer');
-  if (!iframe || typeof Mixcloud === 'undefined' || !Mixcloud.PlayerWidget) return;
+function bindMixcloudWidget(widget) {
+  mixcloudWidget = widget;
+  widget.ready.then(() => {
+    mixcloudReady = true;
+    tryAutoplay(widget);
 
-  mixcloudWidget = Mixcloud.PlayerWidget(iframe);
-  mixcloudWidget.ready.then(() => {
-    tryAutoplay(mixcloudWidget);
+    if (pendingShowKey) {
+      widget.load(pendingShowKey, true).catch(() => {});
+      pendingShowKey = null;
+    }
 
-    mixcloudWidget.events.play.on(() => {
+    widget.events.play.on(() => {
       updateAudioState(window.AmoroAudio.position, FEATURED_SHOW.duration, true);
     });
 
-    mixcloudWidget.events.pause.on(() => {
+    widget.events.pause.on(() => {
       window.AmoroAudio.playing = false;
     });
 
-    mixcloudWidget.events.progress.on((position, duration) => {
-      updateAudioState(position, duration, true);
+    widget.events.progress.on((position, duration) => {
+      updateAudioState(position, duration, window.AmoroAudio.playing);
     });
 
-    mixcloudWidget.events.ended.on(() => {
+    widget.events.ended.on(() => {
       window.AmoroAudio.playing = false;
       window.AmoroAudio.energy = 0;
       window.AmoroAudio.beat = 0;
     });
   });
+}
+
+function initFeaturedPlayer() {
+  const iframe = document.getElementById('mixcloudPlayer');
+  if (!iframe) return;
+
+  const boot = () => {
+    if (typeof Mixcloud === 'undefined' || !Mixcloud.PlayerWidget) {
+      window.setTimeout(boot, 120);
+      return;
+    }
+    if (mixcloudWidget) return;
+    bindMixcloudWidget(Mixcloud.PlayerWidget(iframe));
+  };
+
+  iframe.addEventListener('load', boot);
+  boot();
 }
 
 function bindSetCardsToPlayer() {

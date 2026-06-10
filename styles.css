@@ -87,18 +87,25 @@ body {
     line-height: 1.4;
 }
 
-.mixcloudEngine {
+.mixcloudShell {
     position: fixed;
-    left: -200vw;
-    top: 0;
-    width: 320px;
+    left: 0;
+    right: 0;
+    bottom: -72px;
+    height: 60px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.mixcloudEngine {
+    display: block;
+    width: 100%;
     height: 60px;
     border: 0;
     margin: 0;
     padding: 0;
-    opacity: 0;
-    pointer-events: none;
-    z-index: -1;
 }
 
 .links {
