@@ -59,25 +59,9 @@ function showKey(showUrl) {
   return new URL(showUrl).pathname;
 }
 
-function setNowPlayingToggle(isPlaying, title) {
-  const btn = document.getElementById('nowPlayingToggle');
-  if (!btn) return;
-  btn.classList.toggle('isPlaying', isPlaying);
-  btn.classList.toggle('isPaused', !isPlaying);
-  const resolvedTitle = title || btn.dataset.trackTitle || FEATURED_SHOW.title;
-  btn.dataset.trackTitle = resolvedTitle;
-  btn.setAttribute(
-    'aria-label',
-    isPlaying ? `Pause ${resolvedTitle}` : `Play ${resolvedTitle}`
-  );
-}
-
-function playShow(showUrl, title) {
+function playShow(showUrl) {
   if (!mixcloudWidget) return;
-  const resolvedTitle = title || SHOWS.find((show) => show.url === showUrl)?.title || 'Now playing';
-  mixcloudWidget.load(showKey(showUrl), true).then(() => {
-    setNowPlayingToggle(true, resolvedTitle);
-  }).catch(() => {});
+  mixcloudWidget.load(showKey(showUrl), true).catch(() => {});
 }
 
 function waveformAmplitudeAt(index) {
@@ -165,27 +149,17 @@ function tryAutoplay(widget) {
 
 function initFeaturedPlayer() {
   const iframe = document.getElementById('mixcloudPlayer');
-  const toggle = document.getElementById('nowPlayingToggle');
   if (!iframe || typeof Mixcloud === 'undefined' || !Mixcloud.PlayerWidget) return;
 
   mixcloudWidget = Mixcloud.PlayerWidget(iframe);
   mixcloudWidget.ready.then(() => {
     tryAutoplay(mixcloudWidget);
-    setNowPlayingToggle(true, FEATURED_SHOW.title);
-
-    if (toggle) {
-      toggle.addEventListener('click', () => {
-        mixcloudWidget.togglePlay().catch(() => {});
-      });
-    }
 
     mixcloudWidget.events.play.on(() => {
-      setNowPlayingToggle(true);
       updateAudioState(window.AmoroAudio.position, FEATURED_SHOW.duration, true);
     });
 
     mixcloudWidget.events.pause.on(() => {
-      setNowPlayingToggle(false);
       window.AmoroAudio.playing = false;
     });
 
@@ -209,7 +183,7 @@ function bindSetCardsToPlayer() {
     const trigger = e.target.closest('[data-show-url]');
     if (!trigger) return;
     e.preventDefault();
-    playShow(trigger.dataset.showUrl, trigger.dataset.showTitle);
+    playShow(trigger.dataset.showUrl);
   });
 }
 

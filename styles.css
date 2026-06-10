@@ -87,74 +87,16 @@ body {
     line-height: 1.4;
 }
 
-.nowPlaying {
-    position: fixed;
-    right: 18px;
-    bottom: 18px;
-    z-index: 4;
-}
-
-.nowPlayingEngine {
+.mixcloudEngine {
     position: fixed;
     left: 0;
     bottom: 0;
-    width: 2px;
-    height: 2px;
+    width: 1px;
+    height: 1px;
     border: 0;
-    opacity: 0.01;
+    opacity: 0;
     pointer-events: none;
     overflow: hidden;
-}
-
-.nowPlayingToggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 46px;
-    height: 46px;
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    background: rgba(0, 0, 0, 0.55);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    border-radius: 999px;
-    cursor: pointer;
-    padding: 0;
-}
-
-.nowPlayingToggle:hover {
-    border-color: rgba(255, 255, 255, 0.55);
-    box-shadow: 0 0 16px rgba(0, 255, 255, 0.18);
-}
-
-.pauseIcon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    width: 16px;
-    height: 16px;
-}
-
-.pauseIcon span {
-    display: block;
-    width: 4px;
-    height: 14px;
-    background: currentColor;
-    border-radius: 1px;
-}
-
-.nowPlayingToggle.isPaused .pauseIcon {
-    width: 0;
-    height: 0;
-    border-top: 8px solid transparent;
-    border-bottom: 8px solid transparent;
-    border-left: 12px solid currentColor;
-    gap: 0;
-}
-
-.nowPlayingToggle.isPaused .pauseIcon span {
-    display: none;
 }
 
 .links {

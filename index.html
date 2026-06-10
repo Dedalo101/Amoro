@@ -39,20 +39,15 @@
 
     <a id="contactBubble" class="contactBubble" href="#" aria-label="Contact">@Contact</a>
 
-    <div id="nowPlaying" class="nowPlaying" aria-label="Playback controls">
-        <iframe
-            id="mixcloudPlayer"
-            class="nowPlayingEngine"
-            title="AMORO - TRICKS OR TREAT? player"
-            allow="autoplay"
-            tabindex="-1"
-            src="https://www.mixcloud.com/widget/iframe/?feed=%2Famooro%2Famoro-tricks-or-treat%2F&hide_cover=1&hide_artwork=1&mini=1&autoplay=1&light=1"
-        ></iframe>
-        <button id="nowPlayingToggle" class="nowPlayingToggle isPlaying" type="button" aria-label="Pause playback">
-            <span class="pauseIcon" aria-hidden="true"><span></span><span></span></span>
-        </button>
-    </div>
-    
+    <iframe
+        id="mixcloudPlayer"
+        class="mixcloudEngine"
+        title="AMORO - TRICKS OR TREAT? player"
+        allow="autoplay"
+        tabindex="-1"
+        aria-hidden="true"
+        src="https://www.mixcloud.com/widget/iframe/?feed=%2Famooro%2Famoro-tricks-or-treat%2F&hide_cover=1&hide_artwork=1&mini=1&autoplay=1&light=1"
+    ></iframe>
     <script src="https://widget.mixcloud.com/media/js/widgetApi.js"></script>
     <script src="fractal.js"></script>
     <script src="site.js"></script>
